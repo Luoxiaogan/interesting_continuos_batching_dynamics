@@ -40,7 +40,7 @@ def save_config(output_dir, config):
     print(f"配置已保存: {config_file}")
 
 
-def save_history_to_csv(output_dir, history, num_types, length_range):
+def save_history_to_csv(output_dir, history, num_types, length_range, precision=10):
     """
     将模拟历史保存为CSV文件
 
@@ -49,7 +49,11 @@ def save_history_to_csv(output_dir, history, num_types, length_range):
         history: 模拟器的历史数据
         num_types: 类型数量
         length_range: 长度范围
+        precision: 数值精度（小数位数）
     """
+
+    # 创建float格式化字符串
+    float_format = f'%.{precision}f'
 
     # 1. 保存X_prime状态（核心数据）
     print("\n保存X_prime状态数据...")
@@ -72,7 +76,7 @@ def save_history_to_csv(output_dir, history, num_types, length_range):
 
     df_x_prime = pd.DataFrame(x_prime_records)
     x_prime_file = os.path.join(output_dir, "x_prime_states.csv")
-    df_x_prime.to_csv(x_prime_file, index=False)
+    df_x_prime.to_csv(x_prime_file, index=False, float_format=float_format)
     print(f"  ✓ X_prime状态已保存: {x_prime_file} ({len(x_prime_records)} 条记录)")
 
     # 2. 保存admissions数据
@@ -94,7 +98,7 @@ def save_history_to_csv(output_dir, history, num_types, length_range):
     if admission_records:
         df_admissions = pd.DataFrame(admission_records)
         admissions_file = os.path.join(output_dir, "admissions.csv")
-        df_admissions.to_csv(admissions_file, index=False)
+        df_admissions.to_csv(admissions_file, index=False, float_format=float_format)
         print(f"  ✓ Admissions已保存: {admissions_file} ({len(admission_records)} 条记录)")
 
     # 3. 保存evictions数据
@@ -118,7 +122,7 @@ def save_history_to_csv(output_dir, history, num_types, length_range):
     if eviction_records:
         df_evictions = pd.DataFrame(eviction_records)
         evictions_file = os.path.join(output_dir, "evictions.csv")
-        df_evictions.to_csv(evictions_file, index=False)
+        df_evictions.to_csv(evictions_file, index=False, float_format=float_format)
         print(f"  ✓ Evictions已保存: {evictions_file} ({len(eviction_records)} 条记录)")
 
     # 4. 保存completions数据
@@ -141,7 +145,7 @@ def save_history_to_csv(output_dir, history, num_types, length_range):
     if completion_records:
         df_completions = pd.DataFrame(completion_records)
         completions_file = os.path.join(output_dir, "completions.csv")
-        df_completions.to_csv(completions_file, index=False)
+        df_completions.to_csv(completions_file, index=False, float_format=float_format)
         print(f"  ✓ Completions已保存: {completions_file} ({len(completion_records)} 条记录)")
 
     # 5. 保存batch_info数据
@@ -157,7 +161,7 @@ def save_history_to_csv(output_dir, history, num_types, length_range):
 
     df_batch_info = pd.DataFrame(batch_info_records)
     batch_info_file = os.path.join(output_dir, "batch_info.csv")
-    df_batch_info.to_csv(batch_info_file, index=False)
+    df_batch_info.to_csv(batch_info_file, index=False, float_format=float_format)
     print(f"  ✓ Batch info已保存: {batch_info_file} ({len(batch_info_records)} 条记录)")
 
 
@@ -237,6 +241,9 @@ def main():
     parser.add_argument('--jump', type=int, default=1, help='差异计算的步长')
     parser.add_argument('--no_plot', action='store_true', help='禁用自动生成图表')
 
+    # 精度参数
+    parser.add_argument('--precision', type=int, default=10, help='数值精度（小数位数）')
+
     args = parser.parse_args()
 
     # 解析初始状态
@@ -288,7 +295,8 @@ def main():
         arrival_rates=arrival_rates,
         b0=args.b0,
         b1=args.b1,
-        verbose=args.verbose
+        verbose=args.verbose,
+        precision=args.precision
     )
 
     # 运行模拟
@@ -301,7 +309,7 @@ def main():
     print("=" * 80)
 
     history = sim.get_history()
-    save_history_to_csv(output_dir, history, sim.num_types, sim.length_range)
+    save_history_to_csv(output_dir, history, sim.num_types, sim.length_range, precision=args.precision)
 
     # 保存总结
     save_summary(output_dir, sim)

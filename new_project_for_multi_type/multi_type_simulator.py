@@ -26,7 +26,8 @@ class MultiTypeLLMSimulator:
                  arrival_rates: List[float],  # 各类型的到达率 [lambda_1, lambda_2, ...]
                  b0: float,
                  b1: float,
-                 verbose: bool = False):
+                 verbose: bool = False,
+                 precision: int = 10):
         """
         初始化多类型模拟器
 
@@ -37,6 +38,7 @@ class MultiTypeLLMSimulator:
             arrival_rates: 各类型的到达率列表
             b0, b1: 批处理时间参数 s(n) = b0 + b1*Z(n)
             verbose: 是否打印详细日志
+            precision: 数值精度（小数位数，默认10）
         """
         self.request_types = request_type_list
         self.num_types = len(request_type_list)
@@ -45,6 +47,7 @@ class MultiTypeLLMSimulator:
         self.b0 = b0
         self.b1 = b1
         self.verbose = verbose
+        self.precision = precision
 
         # 时间和批次计数
         self.T = 0.0
