@@ -13,7 +13,7 @@ from matplotlib import cm
 
 def generate_2d_plot(output_dir):
     """
-    生成 2D 图：横轴 s，纵轴 throughput / latency / avg_admission
+    生成 2D 图：横轴 s，纵轴 throughput / latency
 
     参数:
         output_dir: 包含 results.csv 的目录
@@ -21,7 +21,7 @@ def generate_2d_plot(output_dir):
     csv_path = os.path.join(output_dir, "results.csv")
     df = pd.read_csv(csv_path)
 
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
     # 左图：Throughput vs s
     ax1 = axes[0]
@@ -30,6 +30,9 @@ def generate_2d_plot(output_dir):
     ax1.set_ylabel('Throughput (tokens/sec)', fontsize=12)
     ax1.set_title('Throughput vs Admission Threshold', fontsize=14)
     ax1.grid(True, alpha=0.3)
+    # 禁用科学计数法，使用固定小数位
+    ax1.ticklabel_format(style='plain', axis='y', useOffset=False)
+    ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.4f}'))
 
     # 标注最优点
     max_idx = df['throughput'].idxmax()
@@ -37,28 +40,22 @@ def generate_2d_plot(output_dir):
                 color='red', s=100, zorder=10, label=f"Max at s={df.loc[max_idx, 'admission_threshold']}")
     ax1.legend()
 
-    # 中图：Latency vs s
+    # 右图：Latency vs s
     ax2 = axes[1]
     ax2.plot(df['admission_threshold'], df['latency'], 'r-o', linewidth=2, markersize=4)
     ax2.set_xlabel('Admission Threshold (s)', fontsize=12)
     ax2.set_ylabel('Average Latency (sec)', fontsize=12)
     ax2.set_title('Latency vs Admission Threshold', fontsize=14)
     ax2.grid(True, alpha=0.3)
+    # 禁用科学计数法，使用固定小数位
+    ax2.ticklabel_format(style='plain', axis='y', useOffset=False)
+    ax2.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.4f}'))
 
     # 标注最小点
     min_idx = df['latency'].idxmin()
     ax2.scatter(df.loc[min_idx, 'admission_threshold'], df.loc[min_idx, 'latency'],
                 color='green', s=100, zorder=10, label=f"Min at s={df.loc[min_idx, 'admission_threshold']}")
     ax2.legend()
-
-    # 右图：Avg Admission vs s (带标准差)
-    ax3 = axes[2]
-    ax3.errorbar(df['admission_threshold'], df['avg_admission'], yerr=df['std_admission'],
-                 fmt='g-o', linewidth=2, markersize=4, capsize=3, alpha=0.8)
-    ax3.set_xlabel('Admission Threshold (s)', fontsize=12)
-    ax3.set_ylabel('Avg Admission per Batch', fontsize=12)
-    ax3.set_title('Avg Admission vs Admission Threshold', fontsize=14)
-    ax3.grid(True, alpha=0.3)
 
     plt.tight_layout()
 
@@ -88,12 +85,18 @@ def generate_2d_plot(output_dir):
     print(f"Tradeoff plot saved to: {tradeoff_path}")
 
 
-def generate_timeseries_plot(output_dir, results, n_sample=5):
+def generate_timeseries_plot(output_dir, results, n_sample=5, admission_upper_bound=None):
     """
     生成时序图：随机采样 5 个 s 值
     - 图4: 横轴 batch_idx，纵轴 throughput
     - 图5: 横轴 batch_idx，纵轴 latency
-    - 图6: 横轴 batch_idx，纵轴 cumulative_eviction
+    - 图6: 横轴 batch_idx，纵轴 cumulative_eviction 和 admission
+
+    参数:
+        output_dir: 输出目录
+        results: 实验结果列表
+        n_sample: 采样数目
+        admission_upper_bound: 大S上界，用于标注
     """
     import random
 
@@ -112,7 +115,7 @@ def generate_timeseries_plot(output_dir, results, n_sample=5):
     # 按 s 排序
     sampled.sort(key=lambda x: x['admission_threshold'])
 
-    # 图4 & 图5: Throughput 和 Latency 时序
+    # 图4 & 图5: Throughput 和 Latency 时序（横轴用时间 T）
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
     ax1 = axes[0]
@@ -121,22 +124,22 @@ def generate_timeseries_plot(output_dir, results, n_sample=5):
     for r in sampled:
         s = r['admission_threshold']
         batch_history = r['batch_history']
-        batch_idx = [b['batch_idx'] for b in batch_history]
+        time_T = [b['T'] for b in batch_history]
         throughput = [b['throughput'] for b in batch_history]
         latency = [b['latency'] for b in batch_history]
 
-        ax1.plot(batch_idx, throughput, label=f's={s:.2g}', alpha=0.8)
-        ax2.plot(batch_idx, latency, label=f's={s:.2g}', alpha=0.8)
+        ax1.plot(time_T, throughput, label=f's={s:.2g}', alpha=0.8)
+        ax2.plot(time_T, latency, label=f's={s:.2g}', alpha=0.8)
 
-    ax1.set_xlabel('Batch Index', fontsize=12)
+    ax1.set_xlabel('Time (sec)', fontsize=12)
     ax1.set_ylabel('Throughput (tokens/sec)', fontsize=12)
-    ax1.set_title('Throughput vs Batch Index', fontsize=14)
+    ax1.set_title('Throughput vs Time', fontsize=14)
     ax1.legend()
     ax1.grid(True, alpha=0.3)
 
-    ax2.set_xlabel('Batch Index', fontsize=12)
+    ax2.set_xlabel('Time (sec)', fontsize=12)
     ax2.set_ylabel('Average Latency (sec)', fontsize=12)
-    ax2.set_title('Latency vs Batch Index', fontsize=14)
+    ax2.set_title('Latency vs Time', fontsize=14)
     ax2.legend()
     ax2.grid(True, alpha=0.3)
 
@@ -146,28 +149,52 @@ def generate_timeseries_plot(output_dir, results, n_sample=5):
     plt.close()
     print(f"Timeseries plot saved to: {fig_path}")
 
-    # 图6: Cumulative Eviction 时序
-    fig2, ax = plt.subplots(figsize=(8, 5))
+    # 图6: Cumulative Eviction 和 Admission 时序 (1x2 布局，横轴用时间 T)
+    fig2, axes2 = plt.subplots(1, 2, figsize=(14, 5))
 
+    ax_eviction = axes2[0]
+    ax_admission = axes2[1]
+
+    # 左图: Cumulative Eviction
     for r in sampled:
         s = r['admission_threshold']
         batch_history = r['batch_history']
-        batch_idx = [b['batch_idx'] for b in batch_history]
+        time_T = [b['T'] for b in batch_history]
         cum_eviction = [b['cumulative_eviction'] for b in batch_history]
 
-        ax.plot(batch_idx, cum_eviction, label=f's={s:.2g}', alpha=0.8)
+        ax_eviction.plot(time_T, cum_eviction, label=f's={s:.2g}', alpha=0.8)
 
-    ax.set_xlabel('Batch Index', fontsize=12)
-    ax.set_ylabel('Cumulative Eviction', fontsize=12)
-    ax.set_title('Cumulative Eviction vs Batch Index', fontsize=14)
-    ax.legend()
-    ax.grid(True, alpha=0.3)
+    ax_eviction.set_xlabel('Time (sec)', fontsize=12)
+    ax_eviction.set_ylabel('Cumulative Eviction', fontsize=12)
+    ax_eviction.set_title('Cumulative Eviction vs Time', fontsize=14)
+    ax_eviction.legend()
+    ax_eviction.grid(True, alpha=0.3)
+
+    # 右图: Admission per Batch
+    for r in sampled:
+        s = r['admission_threshold']
+        batch_history = r['batch_history']
+        time_T = [b['T'] for b in batch_history]
+        admission = [b.get('admission', 0) for b in batch_history]
+
+        ax_admission.plot(time_T, admission, label=f's={s:.2g}', alpha=0.8)
+
+    # 标注大S上界
+    if admission_upper_bound is not None:
+        ax_admission.axhline(y=admission_upper_bound, color='red', linestyle='--',
+                            linewidth=2, label=f'S={admission_upper_bound:.2g} (upper bound)')
+
+    ax_admission.set_xlabel('Time (sec)', fontsize=12)
+    ax_admission.set_ylabel('Admission per Batch', fontsize=12)
+    ax_admission.set_title('Admission vs Time', fontsize=14)
+    ax_admission.legend()
+    ax_admission.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    eviction_path = os.path.join(output_dir, "timeseries_eviction.png")
+    eviction_path = os.path.join(output_dir, "timeseries_eviction_admission.png")
     plt.savefig(eviction_path, dpi=150, bbox_inches='tight')
     plt.close()
-    print(f"Eviction plot saved to: {eviction_path}")
+    print(f"Eviction & Admission plot saved to: {eviction_path}")
 
 
 def generate_3d_plot(output_dir):

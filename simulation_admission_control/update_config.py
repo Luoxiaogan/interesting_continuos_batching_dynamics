@@ -13,30 +13,44 @@ def compute_equilibrium_params(l0, l1, B, b0, b1, target_ratio=0.95):
     """
     根据稳态公式计算 lambda_rate 和 X0
 
-    稳态公式:
-        M* = γ_sum × λ × b0 / (1 - γ_sum × λ × b1)
-        解出: λ = M* / [γ_sum × (b0 + b1 × M*)]
-    """
-    # γ_sum = Σ(l0 + i) for i in [0, l1-1]
-    gamma_sum = l1 * l0 + l1 * (l1 - 1) / 2
+    模拟器统一使用 active_memory = Σ(l0+i+1) × X[i]
+    - eviction 判断：active_memory <= B
+    - 服务时间：s = b0 + b1 × active_memory
 
-    # 目标 M*
+    稳态条件：
+    - X* = λ × s*
+    - s* = b0 + b1 × γ × X*
+    - M* = γ × X* = target_ratio × B
+
+    其中 γ = Σ(l0+i+1) for i in [0, l1-1]
+
+    解得：
+    - X* = target_ratio × B / γ
+    - λ = target_ratio × B / (γ × (b0 + b1 × target_ratio × B))
+    - s* = b0 + b1 × target_ratio × B
+    """
+    # γ = Σ(l0 + i + 1) for i in [0, l1-1]
+    # = l1 × (l0 + 1) + l1 × (l1 - 1) / 2
+    gamma = l1 * (l0 + 1) + l1 * (l1 - 1) / 2
+
+    # 目标 M* = target_ratio × B
     M_star = target_ratio * B
 
-    # 计算 λ
-    lambda_rate = M_star / (gamma_sum * (b0 + b1 * M_star))
+    # X* = M* / γ
+    x_star = M_star / gamma
 
-    # 计算稳态服务时间 s*
+    # s* = b0 + b1 × M*
     s_star = b0 + b1 * M_star
 
-    # 计算稳态的 X*[i]
-    x_star = lambda_rate * s_star
+    # λ = M* / (γ × s*) = M* / (γ × (b0 + b1 × M*))
+    lambda_rate = M_star / (gamma * s_star)
+
     X0 = [x_star] * l1
 
     return {
         'lambda_rate': lambda_rate,
         'X0': X0,
-        'gamma_sum': gamma_sum,
+        'gamma': gamma,
         'M_star': M_star,
         's_star': s_star,
         'actual_ratio': M_star / B
@@ -72,7 +86,7 @@ def update_config(config_path="config.json", target_ratio=0.95):
     print("Equilibrium parameters:")
     print("=" * 60)
     print(f"  Target M*/B ratio: {target_ratio:.2%}")
-    print(f"  γ_sum: {eq_params['gamma_sum']:.4f}")
+    print(f"  γ (memory coef): {eq_params['gamma']:.4f}")
     print(f"  λ (lambda_rate): {eq_params['lambda_rate']:.6f}")
     print(f"  s* (service time): {eq_params['s_star']:.6f}")
     print(f"  X* (per stage): {eq_params['X0'][0]:.6f}")
@@ -84,6 +98,7 @@ def update_config(config_path="config.json", target_ratio=0.95):
     old_lambda = sim_params.get('lambda_rate', 'N/A')
     old_X0 = config['initial_state'].get('X0', 'N/A')
     old_s_max = config['experiment_params'].get('s_max', 'N/A')
+    old_S = sim_params.get('admission_upper_bound', 'N/A')
 
     sim_params['lambda_rate'] = eq_params['lambda_rate']
     config['initial_state']['X0'] = eq_params['X0']
@@ -94,11 +109,21 @@ def update_config(config_path="config.json", target_ratio=0.95):
     new_s_max = int(x_star)  # 取整数部分，确保小于 X*
     config['experiment_params']['s_max'] = new_s_max
 
+    # 大S (admission_upper_bound) = B / γ
+    # 这是当 Memory = B（满载）时的稳态 n*
+    # 注意：X* = target_ratio × B / γ 是 90% 负载下的稳态
+    #       S = B / γ 是 100% 负载下的稳态，作为 admission 上界
+    gamma = eq_params['gamma']
+    B = sim_params['B']
+    admission_upper_bound_S = B / gamma
+    sim_params['admission_upper_bound'] = admission_upper_bound_S
+
     print(f"\nUpdating {config_path}:")
     print(f"  lambda_rate: {old_lambda} -> {eq_params['lambda_rate']:.6f}")
     print(f"  X0: {old_X0} -> {[round(x, 6) for x in eq_params['X0']]}")
     print(f"  Qe0: -> 0")
     print(f"  s_max: {old_s_max} -> {new_s_max} (must be < X* = {x_star:.4f})")
+    print(f"  S (admission_upper_bound): {old_S} -> {admission_upper_bound_S:.6f} (= B/γ, full capacity)")
 
     # 写回配置
     with open(config_path, 'w', encoding='utf-8') as f:

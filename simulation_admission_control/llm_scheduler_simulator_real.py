@@ -6,7 +6,8 @@ LLM推理调度问题模拟器 - Even simpler setting
 import numpy as np
 
 class LLMSchedulerSimulator:
-    def __init__(self, l0, l1, B, X0, Qe0, lambda_rate, b0, b1, if_float=False, admission_threshold=0, verbose=False):
+    def __init__(self, l0, l1, B, X0, Qe0, lambda_rate, b0, b1, if_float=False,
+                 admission_threshold=0, admission_upper_bound=None, verbose=False):
         """
         初始化模拟器
 
@@ -18,7 +19,8 @@ class LLMSchedulerSimulator:
         Qe0: 初始外部队列长度
         lambda_rate: 确定性到达率
         b0, b1: 批处理时间参数 s(n) = b0 + b1*Z(n)
-        admission_threshold: admission control阈值s，只有当Qe+Qr>=s时才做admission
+        admission_threshold: admission control阈值s（小s），只有当Qe+Qr>=s时才做admission
+        admission_upper_bound: admission上界S（大S），每次admission数量不超过S，None表示无上界
         verbose: 是否打印详细日志
         """
         self.l0 = l0
@@ -35,12 +37,36 @@ class LLMSchedulerSimulator:
         self.if_float = if_float
         self.X0 = X0.copy()
         self.admission_threshold = admission_threshold  # 小s
+        self.admission_upper_bound = admission_upper_bound  # 大S
         self.verbose = verbose
 
         # Latency 跟踪相关变量
         self.total_latency_token_product = 0  # sum(latency * tokens)
         self.total_completed_tokens = 0        # 完成的总 token 数
         self.admission_records = {}            # {batch_id: {admission_time, token_count, jobs_remaining}}
+        self.current_admission_batch_id = 0
+
+        # 为初始 X0 的 job 创建虚拟 admission_record
+        # X0[i] 的 job 在 stage i，它们将在 (l1 - i) 个 batch 后完成
+        # 假设它们在 T = -(l1 - i) * estimated_service_time 时被 admit
+        # 估算初始 service time
+        initial_Z = sum((l0 + i + 1) * X0[i] for i in range(l1))
+        estimated_service_time = b0 + b1 * initial_Z
+
+        for i in range(l1):
+            if X0[i] > 0:
+                # stage i 的 job 将在 (l1 - 1 - i) 个 batch 后完成
+                # 它们应该在 T = -((l1 - 1 - i) + 1) * service_time 时被 admit
+                # 即在 (l1 - i) 个 batch 之前
+                batches_until_completion = l1 - i
+                virtual_admission_time = -batches_until_completion * estimated_service_time
+                self.current_admission_batch_id -= 1  # 使用负数 batch_id
+                self.admission_records[self.current_admission_batch_id] = {
+                    'admission_time': virtual_admission_time,
+                    'jobs_remaining': X0[i]
+                }
+
+        # 重置 batch_id 计数器（虚拟的用负数，真实的从 1 开始）
         self.current_admission_batch_id = 0
 
         # 记录每次 admission 的数目
@@ -56,13 +82,14 @@ class LLMSchedulerSimulator:
         if self.verbose:
             print("*"*50)
             print(f"INIT:n={self.n}, X={self.X}, Qe={self.Qe:.3f}, Qr={self.Qr}, B={self.B}, lambda={self.lambda_rate}")
+            print(f"Virtual admission records for X0: {self.admission_records}")
             print("*"*50)
         
     def compute_batch_size(self):
-        """计算当前批次大小Z(n)"""
+        """计算当前批次大小Z(n)，使用 active memory (l0+i+1)"""
         Z = 0
-        for i in range(0, self.l1): # 0 \to l1-1, 这里做了修改
-            Z += (self.l0 + i) * self.X[i] 
+        for i in range(0, self.l1):
+            Z += (self.l0 + i + 1) * self.X[i]
         return Z
     
     def compute_service_time(self, Z):
@@ -105,24 +132,31 @@ class LLMSchedulerSimulator:
                 the_same = False
                 eviction += self.X[i] - X_prime[i]
         self.cumulative_eviction += eviction  # 累计 eviction
+
+        # 记录 admission 之前的 batch token 数 (active memory)
+        tokens_before_admission = sum((self.l0 + i + 1) * X_prime[i] for i in range(self.l1))
+
         if the_same:
             # 说明还可能做 admission
-            # admission control: 只有当 Qe + Qr >= admission_threshold 时才做 admission
+            # admission control: 只有当 Qe + Qr >= admission_threshold (小s) 时才做 admission
             if self.Qe + self.Qr >= self.admission_threshold:
                 available_tokens = self.B - token_in_need
                 length = self.l0 + 1
                 if self.if_float:
                     number = available_tokens / length
                     admission = min(self.Qe + self.Qr, number)
+                    # 应用大S上界
+                    if self.admission_upper_bound is not None:
+                        admission = min(admission, self.admission_upper_bound)
                 else:
                     number = int(available_tokens / length)
-                    # assert isinstance(self.Qe + self.Qr, int)
                     admission = min(int(self.Qe + self.Qr), number)
-                # print(f"self.Qe={self.Qe}, self.Qr={self.Qr}, number={number}")
-                # assert isinstance(admission, int)
+                    # 应用大S上界
+                    if self.admission_upper_bound is not None:
+                        admission = min(admission, int(self.admission_upper_bound))
                 X_prime[0] += admission
             else:
-                # Qe + Qr < admission_threshold, 不做 admission
+                # Qe + Qr < admission_threshold (小s), 不做 admission
                 admission = 0
             assert (eviction == 0)
         else:
@@ -131,11 +165,11 @@ class LLMSchedulerSimulator:
 
 
         # 2. 执行 batch
-        Z = sum((self.l0 + i) * X_prime[i] for i in range(0, self.l1))
-        flow_Z = sum((self.l0 + i + 1) * X_prime[i] for i in range(0, self.l1))
+        # Z 是 admission 之后的 batch token 数 (active memory)
+        Z = sum((self.l0 + i + 1) * X_prime[i] for i in range(self.l1))
         s = self.compute_service_time(Z)
         if self.verbose:
-            print(f"n={self.n}, T={self.T:.3f}: after AE, X={X_prime}, sum_X = {sum(X_prime[i] for i in range(0,self.l1))}, Qe={self.Qe:.3f}, Qr={self.Qr}, admission={admission}, eviction={eviction}, flow_Z={flow_Z}, Z={Z}, s={s:.3f}")
+            print(f"n={self.n}, T={self.T:.3f}: after AE, X={X_prime}, sum_X = {sum(X_prime[i] for i in range(0,self.l1))}, Qe={self.Qe:.3f}, Qr={self.Qr}, admission={admission}, eviction={eviction}, Z={Z}, s={s:.3f}")
 
         # 记录 admission（用于 latency 跟踪）
         self.admission_history.append(admission)  # 记录每次 admission 数目
@@ -169,9 +203,8 @@ class LLMSchedulerSimulator:
         Qe_prime = Qe_prime + self.lambda_rate * s
 
         # 然后执行 batch
-        # 首先要检查
-        overflow_memory = sum((self.l0 + i) * X_prime[i] for i in range(0, self.l1))
-        assert (overflow_memory <= self.B)
+        # 检查 active memory 不超过 B
+        assert (Z <= self.B)
         completion = X_prime[self.l1-1]
         self.total_completion += completion
 
@@ -194,7 +227,11 @@ class LLMSchedulerSimulator:
             'T': self.T,
             'throughput': self.get_current_throughput(),
             'latency': self.get_current_avg_latency(),
-            'cumulative_eviction': self.cumulative_eviction
+            'cumulative_eviction': self.cumulative_eviction,
+            'admission': admission,
+            'queue_length': self.Qe + self.Qr,  # 当前 Qe + Qr（admission 后的值）
+            'tokens_before_admission': tokens_before_admission,  # admission 前的 batch token 数
+            'tokens_after_admission': Z  # admission 后的 batch token 数
         })
 
         if self.verbose:

@@ -24,78 +24,45 @@ def compute_equilibrium_params(l0, l1, B, b0, b1, target_ratio=0.95):
     """
     根据稳态公式计算 lambda_rate 和 X0
 
-    稳态公式:
-        稳态时 X*[i] = x* 对于所有 i ∈ [0, l1-1]
-        其中 x* = λ * s*，s* 是稳态服务时间
+    模拟器统一使用 active_memory = Σ(l0+i+1) × X[i]
+    - eviction 判断：active_memory <= B
+    - 服务时间：s = b0 + b1 × active_memory
 
-        M* = Σ (l0 + i) × x* for i in [0, l1-1]
-           = x* × [l1×l0 + l1×(l1-1)/2]
-           = x* × l1 × (l0 + (l1-1)/2)
+    稳态条件：
+    - X* = λ × s*
+    - s* = b0 + b1 × γ × X*
+    - M* = γ × X* = target_ratio × B
 
-        定义 γ_sum = l1 × l0 + l1×(l1-1)/2 = l1 × (l0 + (l1-1)/2)
+    其中 γ = Σ(l0+i+1) for i in [0, l1-1]
 
-        服务时间 s* = b0 + b1 × M*
-
-        从 x* = λ × s* 和 M* = γ_sum × x*:
-        M* = γ_sum × λ × s* = γ_sum × λ × (b0 + b1 × M*)
-        M* × (1 - γ_sum × λ × b1) = γ_sum × λ × b0
-        M* = γ_sum × λ × b0 / (1 - γ_sum × λ × b1)
-
-        为使 M*/B = target_ratio:
-        target_ratio × B = γ_sum × λ × b0 / (1 - γ_sum × λ × b1)
-        设 α = γ_sum × λ
-        target_ratio × B = α × b0 / (1 - α × b1)
-        target_ratio × B × (1 - α × b1) = α × b0
-        target_ratio × B = α × b0 + target_ratio × B × α × b1
-        target_ratio × B = α × (b0 + target_ratio × B × b1)
-        α = target_ratio × B / (b0 + target_ratio × B × b1)
-        λ = α / γ_sum
-
-    参数:
-        l0: 作业初始大小的基础部分
-        l1: 作业处理阶段数
-        B: GPU 容量限制
-        b0, b1: 批处理时间参数
-        target_ratio: M*/B 的目标比例 (默认 0.95)
-
-    返回:
-        dict: {
-            'lambda_rate': 计算得到的到达率,
-            'X0': 稳态初始状态列表,
-            'gamma_sum': γ_sum 值,
-            'M_star': 稳态 memory,
-            'target_ratio': 实际使用的目标比例
-        }
+    解得：
+    - X* = target_ratio × B / γ
+    - λ = target_ratio × B / (γ × (b0 + b1 × target_ratio × B))
+    - s* = b0 + b1 × target_ratio × B
     """
-    # 计算 γ_sum = Σ(l0 + i) for i in [0, l1-1]
-    gamma_sum = l1 * l0 + l1 * (l1 - 1) / 2
+    # γ = Σ(l0 + i + 1) for i in [0, l1-1]
+    gamma = l1 * (l0 + 1) + l1 * (l1 - 1) / 2
 
-    # 目标 M*
-    M_star_target = target_ratio * B
+    # 目标 M* = target_ratio × B
+    M_star = target_ratio * B
 
-    # 计算 α = γ_sum × λ
-    alpha = M_star_target / (b0 + M_star_target * b1)
+    # X* = M* / γ
+    x_star = M_star / gamma
 
-    # 计算 λ
-    lambda_rate = alpha / gamma_sum
+    # s* = b0 + b1 × M*
+    s_star = b0 + b1 * M_star
 
-    # 计算稳态服务时间 s*
-    s_star = b0 + b1 * M_star_target
+    # λ = M* / (γ × s*)
+    lambda_rate = M_star / (gamma * s_star)
 
-    # 计算稳态的 X*[i]
-    x_star = lambda_rate * s_star
     X0 = [x_star] * l1
-
-    # 验证 M*
-    M_star = sum((l0 + i) * X0[i] for i in range(l1))
 
     return {
         'lambda_rate': lambda_rate,
         'X0': X0,
-        'gamma_sum': gamma_sum,
+        'gamma': gamma,
         'M_star': M_star,
         's_star': s_star,
-        'target_ratio': target_ratio,
         'actual_ratio': M_star / B
     }
 
@@ -133,13 +100,12 @@ def auto_configure(config, target_ratio=0.95):
     print("Auto-configured equilibrium parameters:")
     print("=" * 60)
     print(f"  Target M*/B ratio: {target_ratio:.2%}")
-    print(f"  γ_sum (sum of sizes): {eq_params['gamma_sum']:.4f}")
+    print(f"  γ (memory coef): {eq_params['gamma']:.4f}")
     print(f"  λ (lambda_rate): {eq_params['lambda_rate']:.6f}")
     print(f"  s* (service time): {eq_params['s_star']:.6f}")
     print(f"  X* (per stage): {eq_params['X0'][0]:.6f}")
-    print(f"  M* (total memory): {eq_params['M_star']:.4f}")
+    print(f"  M* (memory): {eq_params['M_star']:.4f}")
     print(f"  B (capacity): {sim_params['B']}")
-    print(f"  Actual M*/B: {eq_params['actual_ratio']:.4%}")
     print("=" * 60)
 
     return config
@@ -172,6 +138,7 @@ def run_single_experiment(sim_params, init_state, stability_params, admission_th
         b1=sim_params['b1'],
         if_float=sim_params['if_float'],
         admission_threshold=admission_threshold,
+        admission_upper_bound=sim_params.get('admission_upper_bound', None),  # 大S
         verbose=False  # 批量实验时关闭打印
     )
 
@@ -513,14 +480,19 @@ def save_batch_history_csv(output_dir, results):
         csv_path = os.path.join(batch_dir, f"s_{s:.4g}.csv")
         with open(csv_path, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
-            writer.writerow(['batch_idx', 'T', 'throughput', 'latency', 'cumulative_eviction'])
+            writer.writerow(['batch_idx', 'T', 'throughput', 'latency', 'cumulative_eviction',
+                           'admission', 'queue_length', 'tokens_before_admission', 'tokens_after_admission'])
             for b in batch_history:
                 writer.writerow([
                     b['batch_idx'],
                     f"{b['T']:.15g}",
                     f"{b['throughput']:.15g}",
                     f"{b['latency']:.15g}",
-                    f"{b['cumulative_eviction']:.15g}"
+                    f"{b['cumulative_eviction']:.15g}",
+                    f"{b['admission']:.15g}",
+                    f"{b['queue_length']:.15g}",
+                    f"{b['tokens_before_admission']:.15g}",
+                    f"{b['tokens_after_admission']:.15g}"
                 ])
 
     print(f"Batch history saved to: {batch_dir}")
@@ -586,7 +558,9 @@ def main(config_path="config.json", run_3d=False, parallel=False, n_workers=None
     try:
         from visualization import generate_2d_plot, generate_3d_plot, generate_timeseries_plot
         generate_2d_plot(output_dir)
-        generate_timeseries_plot(output_dir, results_2d)
+        # 传入 admission_upper_bound (大S) 用于标注
+        admission_upper_bound = config['simulation_params'].get('admission_upper_bound')
+        generate_timeseries_plot(output_dir, results_2d, admission_upper_bound=admission_upper_bound)
         if run_3d and config.get('visualization_params', {}).get('arrival_rates_for_3d'):
             generate_3d_plot(output_dir)
     except ImportError:
