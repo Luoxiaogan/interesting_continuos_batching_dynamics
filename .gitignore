@@ -23,6 +23,17 @@ ENV/
 
 # 临时文件
 *.backup
-EOF
 
+# Simulation outputs
 simulation_admission_control/output/experiment_*
+
+# Claude Code
+.claude/plans/
+
+# 临时测试文件目录（除了README.md）
+tmp/*
+!tmp/README.md
+
+# 实验输出和归档（临时输出）
+experiments/output/
+experiments/archive/*/output/

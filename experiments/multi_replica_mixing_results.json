@@ -1,0 +1,88 @@
+{
+  "experiment": "4 Types: Group1(4,8),(4,16) vs Group2(3,5),(3,15)",
+  "group1": [
+    [
+      4,
+      8
+    ],
+    [
+      4,
+      16
+    ]
+  ],
+  "group2": [
+    [
+      3,
+      5
+    ],
+    [
+      3,
+      15
+    ]
+  ],
+  "gcd_g1": 8,
+  "gcd_g2": 5,
+  "all_types": [
+    [
+      4,
+      8
+    ],
+    [
+      4,
+      16
+    ],
+    [
+      3,
+      5
+    ],
+    [
+      3,
+      15
+    ]
+  ],
+  "segregated": {
+    "scenario": "segregated",
+    "total_throughput": 1.403830880664907,
+    "avg_latency": 0.7123365170072071,
+    "total_time": 5100.00000000002,
+    "per_replica": [
+      {
+        "replica_id": 0,
+        "completions": 2839.8760330577206,
+        "total_time": 5100.00000000002,
+        "converged": false
+      },
+      {
+        "replica_id": 1,
+        "completions": 4319.661458333333,
+        "total_time": 5100.00000000002,
+        "converged": false
+      }
+    ],
+    "all_converged": false,
+    "load_balance_std": 1046.3663089134045
+  },
+  "mixed": {
+    "scenario": "mixed",
+    "total_throughput": 1.5116409677990665,
+    "avg_latency": 0.6615327457392145,
+    "total_time": 5100.00000000002,
+    "per_replica": [
+      {
+        "replica_id": 0,
+        "completions": 3854.684467887635,
+        "total_time": 5100.00000000002,
+        "converged": false
+      },
+      {
+        "replica_id": 1,
+        "completions": 3854.684467887635,
+        "total_time": 5100.00000000002,
+        "converged": false
+      }
+    ],
+    "all_converged": false,
+    "load_balance_std": 0.0
+  },
+  "improvement_pct": 7.679706196739078
+}

@@ -1,0 +1,55 @@
+{
+  "experiment_name": "Multi-Replica Request Mixing - Heterogeneity vs Homogeneity",
+  "experiment_purpose": "验证请求异质性(mixing)对系统稳定性和吞吐量的影响",
+  "theoretical_basis": "notes.tex - heterogeneous requests improve stability",
+
+  "test_groups": [
+    {
+      "name": "Coprime Pair (129, 256)",
+      "l1_A": 129,
+      "l1_B": 256,
+      "gcd": 1,
+      "expected_mixing_benefit": "moderate"
+    },
+    {
+      "name": "Non-coprime Pair (63, 189)",
+      "l1_A": 63,
+      "l1_B": 189,
+      "gcd": 63,
+      "expected_mixing_benefit": "high"
+    }
+  ],
+
+  "common_parameters": {
+    "l0": 5,
+    "num_replicas": 2,
+    "B": 500,
+    "b0": 0.1,
+    "b1": 0.01,
+    "steps": 1000,
+    "arrival_rates": {
+      "lambda_A": 2.0,
+      "lambda_B": 2.0
+    }
+  },
+
+  "routing_scenarios": [
+    {
+      "name": "segregated",
+      "description": "Type A → Replica 0, Type B → Replica 1 (homogeneous)",
+      "expected_result": "可能不稳定,低吞吐量(尤其是non-coprime情况)"
+    },
+    {
+      "name": "mixed",
+      "description": "50% A + 50% B → each replica (heterogeneous)",
+      "expected_result": "更稳定,高吞吐量"
+    }
+  ],
+
+  "evaluation_metrics": [
+    "total_throughput",
+    "average_latency",
+    "convergence (stability)",
+    "load_balance"
+  ]
+}
