@@ -24,3 +24,5 @@ ENV/
 # 临时文件
 *.backup
 EOF
+
+simulation_admission_control/output/experiment_*

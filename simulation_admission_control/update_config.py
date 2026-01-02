@@ -1,0 +1,122 @@
+"""
+更新 config.json 的稳态参数
+根据目标 M*/B 比例自动计算 lambda_rate 和 X0
+python3 update_config.py --target-ratio 0.95
+"""
+
+import json
+import argparse
+import os
+
+
+def compute_equilibrium_params(l0, l1, B, b0, b1, target_ratio=0.95):
+    """
+    根据稳态公式计算 lambda_rate 和 X0
+
+    稳态公式:
+        M* = γ_sum × λ × b0 / (1 - γ_sum × λ × b1)
+        解出: λ = M* / [γ_sum × (b0 + b1 × M*)]
+    """
+    # γ_sum = Σ(l0 + i) for i in [0, l1-1]
+    gamma_sum = l1 * l0 + l1 * (l1 - 1) / 2
+
+    # 目标 M*
+    M_star = target_ratio * B
+
+    # 计算 λ
+    lambda_rate = M_star / (gamma_sum * (b0 + b1 * M_star))
+
+    # 计算稳态服务时间 s*
+    s_star = b0 + b1 * M_star
+
+    # 计算稳态的 X*[i]
+    x_star = lambda_rate * s_star
+    X0 = [x_star] * l1
+
+    return {
+        'lambda_rate': lambda_rate,
+        'X0': X0,
+        'gamma_sum': gamma_sum,
+        'M_star': M_star,
+        's_star': s_star,
+        'actual_ratio': M_star / B
+    }
+
+
+def update_config(config_path="config.json", target_ratio=0.95):
+    """
+    更新 config.json 中的 lambda_rate 和 X0
+
+    参数:
+        config_path: 配置文件路径
+        target_ratio: 目标 M*/B 比例 (默认 0.95)
+    """
+    # 读取配置
+    with open(config_path, 'r', encoding='utf-8') as f:
+        config = json.load(f)
+
+    sim_params = config['simulation_params']
+
+    # 计算稳态参数
+    eq_params = compute_equilibrium_params(
+        l0=sim_params['l0'],
+        l1=sim_params['l1'],
+        B=sim_params['B'],
+        b0=sim_params['b0'],
+        b1=sim_params['b1'],
+        target_ratio=target_ratio
+    )
+
+    # 打印信息
+    print("=" * 60)
+    print("Equilibrium parameters:")
+    print("=" * 60)
+    print(f"  Target M*/B ratio: {target_ratio:.2%}")
+    print(f"  γ_sum: {eq_params['gamma_sum']:.4f}")
+    print(f"  λ (lambda_rate): {eq_params['lambda_rate']:.6f}")
+    print(f"  s* (service time): {eq_params['s_star']:.6f}")
+    print(f"  X* (per stage): {eq_params['X0'][0]:.6f}")
+    print(f"  M* (memory): {eq_params['M_star']:.4f}")
+    print(f"  B (capacity): {sim_params['B']}")
+    print("=" * 60)
+
+    # 更新配置
+    old_lambda = sim_params.get('lambda_rate', 'N/A')
+    old_X0 = config['initial_state'].get('X0', 'N/A')
+    old_s_max = config['experiment_params'].get('s_max', 'N/A')
+
+    sim_params['lambda_rate'] = eq_params['lambda_rate']
+    config['initial_state']['X0'] = eq_params['X0']
+    config['initial_state']['Qe0'] = 0
+
+    # s_max 应小于稳态 X*（否则 Qe + Qr 永远不会达到阈值）
+    x_star = eq_params['X0'][0]
+    new_s_max = int(x_star)  # 取整数部分，确保小于 X*
+    config['experiment_params']['s_max'] = new_s_max
+
+    print(f"\nUpdating {config_path}:")
+    print(f"  lambda_rate: {old_lambda} -> {eq_params['lambda_rate']:.6f}")
+    print(f"  X0: {old_X0} -> {[round(x, 6) for x in eq_params['X0']]}")
+    print(f"  Qe0: -> 0")
+    print(f"  s_max: {old_s_max} -> {new_s_max} (must be < X* = {x_star:.4f})")
+
+    # 写回配置
+    with open(config_path, 'w', encoding='utf-8') as f:
+        json.dump(config, f, indent=2, ensure_ascii=False)
+
+    print(f"\nConfig updated successfully!")
+    return config
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Update config.json with equilibrium parameters')
+    parser.add_argument('--config', type=str, default='config.json', help='Path to config file')
+    parser.add_argument('--target-ratio', type=float, default=0.95,
+                        help='Target M*/B ratio (default: 0.95)')
+    args = parser.parse_args()
+
+    # 切换到脚本所在目录
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(script_dir)
+
+    update_config(args.config, args.target_ratio)

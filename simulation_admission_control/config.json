@@ -1,0 +1,48 @@
+{
+  "simulation_params": {
+    "l0": 2,
+    "l1": 8,
+    "B": 200,
+    "b0": 0.5,
+    "b1": 0.01,
+    "lambda_rate": 1.7786561264822136,
+    "if_float": true
+  },
+  "initial_state": {
+    "X0": [
+      4.0,
+      4.090909090909091,
+      4.090909090909091,
+      4.090909090909091,
+      4.090909090909091,
+      4.090909090909091,
+      4.090909090909091,
+      4.090909090909091
+    ],
+    "Qe0": 0
+  },
+  "experiment_params": {
+    "s_min": 0,
+    "s_max": 4,
+    "initial_step": 0.5,
+    "refine_step": 0.05,
+    "refine_threshold": 0.05,
+    "min_steps": 100000,
+    "max_steps": 100000
+  },
+  "stability_params": {
+    "window_size": 10,
+    "check_interval": 5,
+    "epsilon": 0.001,
+    "min_steps": 100000
+  },
+  "visualization_params": {
+    "arrival_rates_for_3d": [
+      2,
+      3,
+      4,
+      4.5,
+      5
+    ]
+  }
+}
