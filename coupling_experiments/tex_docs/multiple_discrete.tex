@@ -1,0 +1,465 @@
+\subsection{Multi Type, Discrete Model}
+
+\subsubsection{Two types, same init length}
+We consider two types $A$ and $B$ with same init length $l_0$ and decode length $l_A < l_B$. We assume there is no eviction. The token change at time $t$ is:
+\begin{align*}
+(l_0+1)X_{t+1}^{(0)}=&(l_0+l_B)X^{(l_B-1)}_{t}+(l_0+l_A)pX^{(l_A-1)}_{t}-(1-p)X^{(l_A-1)}_{t}-\sum_{i=0}^{l_A-2}X^{(i)}_{t}-\sum_{i=l_A}^{l_B-2}X^{(i)}_{t}\\
+=&(l_0+l_B+1)X^{(l_B-1)}_{t}+(l_0+l_A+1)pX^{(l_A-1)}_{t}-\sum_{i=0}^{l_B-1}X^{(i)}_{t},\; p =\frac{\lambda_A}{\lambda_A+\lambda_B}
+\end{align*}
+The current number at each stage relates to the admission several steps before:
+\begin{align*}
+(l_0+1)X_{t+1}^{(0)}=&(l_0+l_B)X^{(l_B-1)}_{t}+(l_0+l_A)pX^{(l_A-1)}_{t}-(1-p)X^{(l_A-1)}_{t}-\sum_{i=0}^{l_A-2}X^{(i)}_{t}-\sum_{i=l_A}^{l_B-2}X^{(i)}_{t}\\
+=&(l_0+l_B)(1-p)X^{(0)}_{t-l_B}+(l_0+l_A)pX^{(0)}_{t-l_A}-(1-p)X^{(0)}_{t-l_A}-\sum_{i=0}^{l_A-2}X^{(0)}_{t-i-1}-(1-p)\sum_{i=l_A}^{l_B-2}X^{(0)}_{t-i-1}\\
+=&(l_0+l_B)(1-p)X^{(0)}_{t-l_B}+(l_0+l_A)pX^{(0)}_{t-l_A}-(1-p)X^{(0)}_{t-l_A}-\sum_{i=t-l_A+1}^{t-1}X^{(0)}_{i}-(1-p)\sum_{i=t-l_B+1}^{t-l_A-1}X^{(0)}_{i}\\
+=&(l_0+l_B+1)(1-p)X^{(0)}_{t-l_B}+(l_0+l_A+1)pX^{(0)}_{t-l_A}-\sum_{i=t-l_A}^{t-1}X^{(0)}_{i}-(1-p)\sum_{i=t-l_B}^{t-l_A-1}X^{(0)}_{i}
+\end{align*}
+We can write this to:
+\begin{align*}
+(l_0+1)X_{t+1}=&(l_0+l_B)(1-p)X_{t-l_B+1}+\big[(l_0+l_A)p-(1-p)\big]X_{t-l_A+1}-\sum_{i=t-l_A+2}^{t}X_{i}-(1-p)\sum_{i=t-l_B+2}^{t-l_A}X_{i}
+\end{align*}
+For example, with the same $l_0$, and $l_A=2, l_B=4$, we have
+\begin{align*}
+&(l_0+1)X_{t+1}=(l_0+4)(1-p)X_{t-3}+\big[(l_0+2)p-(1-p)\big]X_{t-1}-X_{t}-(1-p)X_{t-2}\\
+\implies &(l_0+1)X_{t+1}-(l_0+1)X_{t}=(l_0+4)(1-p)X_{t-3}+\big[(l_0+2)p-(1-p)\big]X_{t-1}-(l_0+2)X_{t}-(1-p)X_{t-2}
+\end{align*}
+We define $D_t=X_{t+1}-X_t$, we have
+\begin{align*}
+(l_0+1)D_t+(l_0+2)D_{t-1}+(1-p)(l_0+3)D_{t-2}+(1-p)(l_0+4)D_{t-3}=0
+\end{align*}
+The general form is
+\begin{align*}
+(l_0+1)D_t + \sum_{m=1}^{l_A-1}(l_0+m+1)D_{t-m} + (1-p)\sum_{m=l_A}^{l_B-1}(l_0+m+1)D_{t-m} = 0
+\end{align*}
+The characteristic equation is
+\begin{align*}
+(l_0+1)\lambda^{l_B-1} + \sum_{m=1}^{l_A-1}(l_0+m+1)\lambda^{l_B-1-m} + (1-p)\sum_{m=l_A}^{l_B-1}(l_0+m+1)\lambda^{l_B-1-m} = 0
+\end{align*}
+We set:
+$$F(\lambda) = (l_0+1)\lambda^{l_B-1} + \sum_{m=1}^{l_A-1}(l_0+m+1)\lambda^{l_B-1-m} + (1-p)\sum_{m=l_A}^{l_B-1}(l_0+m+1)\lambda^{l_B-1-m}$$
+Fiest, we can find the limit form when $l_0\to +\infty$, we define 
+\begin{align*}
+A(\lambda)&=\lim_{l_0\to +\infty}\frac{F(\lambda)}{l_0+1}=\lambda^{l_B-1} + \sum_{m=1}^{l_A-1}\lambda^{l_B-1-m} + (1-p)\sum_{m=l_A}^{l_B-1}\lambda^{l_B-1-m}\\
+&=\frac{-\lambda^{l_B}+p\lambda^{l_B-l_A}+q}{1-\lambda}
+\end{align*}
+For the correction term, we define
+\begin{align*}
+B(\lambda)=F(\lambda) - (l_0+1)A(\lambda)=\sum_{m=1}^{l_A-1}m\lambda^{l_B-1-m} + (1-p)\sum_{m=l_A}^{l_B-1}m\lambda^{l_B-1-m}
+\end{align*}
+\textcolor{blue}{We can observe this equation $B(\lambda)=(l_B-1)A(\lambda)-\lambda A^\prime(\lambda)$:
+\begin{align*}
+\lambda A^\prime(\lambda)=&(l_B-1)\lambda^{l_B-1} + \sum_{m=1}^{l_A-1}(l_B-1-m)\lambda^{l_B-1-m} + (1-p)\sum_{m=l_A}^{l_B-1}(l_B-1-m)\lambda^{l_B-1-m}\\
+=&(l_B-1)\big[\lambda^{l_B-1} + \sum_{m=1}^{l_A-1}\lambda^{l_B-1-m} + (1-p)\sum_{m=l_A}^{l_B-1}\lambda^{l_B-1-m}\big]\\
+&-\big[\sum_{m=1}^{l_A-1}m\lambda^{l_B-1-m} + (1-p)\sum_{m=l_A}^{l_B-1}m\lambda^{l_B-1-m}\big]\\
+=&(l_B-1)A(\lambda)-B(\lambda)
+\end{align*}
+So we have:
+\begin{align*}
+&F(\lambda) - (l_0+1)A(\lambda) = (l_B-1)A(\lambda)-\lambda A^\prime(\lambda)\\
+\iff & F(\lambda)= (l_0+l_B)A(\lambda)-\lambda A^\prime(\lambda)
+\end{align*}
+}
+And the explicit form of the correction term is, and we define $\text{Num}(\lambda)$
+\begin{align*}
+&F(\lambda) - (l_0+1)A(\lambda) = B(\lambda)= \textcolor{blue}{\frac{\text{Num}(\lambda)}{1-\lambda}=(l_B-1)A(\lambda)-\lambda A^\prime(\lambda)}\\
+=&\frac{1}{1-\lambda}\Bigg[\lambda^{l_B} + (l_A-1)\lambda^{l_B-l_A} - l_A\lambda^{l_B-l_A+1} + q\Big(l_A\lambda^{l_B-l_A+1} + (1-l_A)\lambda^{l_B-l_A} - l_B\lambda + (l_B-1)\Big)\Bigg] 
+\end{align*}
+
+\subsubsection{Two types, same init length, limit function}
+
+\textbf{Lemma 1.} For all root $\lambda$ such that $(1-\lambda)A(\lambda)=0$, $|\lambda|\leq 1$.\\
+\textit{Proof.} First consider
+$$|\lambda|^{l_B}=|p\lambda^{l_B-l_A}+q|\leq p|\lambda|^{l_B-l_A} + q$$
+Consider $g(x)=x^{l_B}-px^{l_B-l_A}-q$, we have $g(1)=0$ and 
+$$g^\prime(x)=l_Bx^{l_B-1}-p(l_B-l_A)x^{l_B-l_A-1}=x^{l_B-l_A-1}\big[ l_B x^{l_A}-p(l_B-l_A) \big]$$
+If $|\lambda|>1$, we have 
+$$g^\prime(|\lambda|) = |\lambda|^{l_B-l_A-1}\big[ l_B |\lambda|^{l_A}-p(l_B-l_A) \big]> l_B -p(l_B-l_A)>0 $$
+so for continuous $g(x)$ we get the contradiction.
+$$g(|\lambda|)=|\lambda|^{l_B}-p|\lambda|^{l_B-l_A} - q>g(1)=0 \iff |\lambda|^{l_B}>p|\lambda|^{l_B-l_A} + q$$
+
+\textbf{Lemma 2.} For all root $\lambda$ such that $(1-\lambda)A(\lambda)=0$, if $|\lambda|=1$, then $\lambda^g=1, g=\gcd(l_A,l_B)$.\\
+\textit{Proof.} Let $|\lambda|=1$, and $(1-\lambda)A(\lambda)=0$, for complex number $\lambda$ we have
+\begin{align*}
+&|\lambda|^{l_B}=1=|p\lambda^{l_B-l_A}+q|\leq p|\lambda|^{l_B-l_A} + q =1\\
+\iff & \lambda^{l_B-l_A} = 1 \\
+\implies & \lambda^{l_B} = p\lambda^{l_B-l_A}+q = p+q =1\\
+\implies & \lambda^{l_A} = \lambda^{l_B} = 1\\
+\implies & \lambda^g=1, g=\gcd(l_A,l_B)
+\end{align*}
+
+\textbf{Lemma 3.} $\lambda = 1$ is not a root of $A(\lambda)$.\\
+\textit{Proof.} We have
+$$A(\lambda) = \lim_{l_0\to +\infty} \frac{F(\lambda)}{l_0+1} = \lambda^{l_B-1} + \sum_{m=1}^{l_A-1}\lambda^{l_B-1-m} + q\sum_{m=l_A}^{l_B-1}\lambda^{l_B-1-m}$$
+Substituting $\lambda = 1$:
+$$A(1) = 1 + (l_A - 1) + q(l_B - l_A) = l_A + q(l_B - l_A) > 0$$
+Therefore $\lambda = 1$ is not a root of $A(\lambda)$.
+
+\textbf{Lemma 4.} If $g = \gcd(l_A, l_B) > 1$, then all primitive $g$-th roots of unity $\omega = e^{2\pi ik/g}$ ($k = 1, \ldots, g-1$) are roots of $A(\lambda) = 0$.\\
+\textit{Proof.} Let $\omega^g = 1$ with $\omega \neq 1$, and we have that $l_A = ag$, $l_B = bg$ where $\gcd(a,b) = 1$. Then we have:
+\begin{align*}
+\omega^{l_A} = (\omega^g)^a = 1; \quad  \omega^{l_B} = (\omega^g)^b = 1;  \quad \omega^{l_B - l_A} = 1
+\end{align*}
+So for $(1-\lambda)A(\lambda) = -\lambda^{l_B} + p\lambda^{l_B-l_A} + q$ we have
+$$A(\omega) = -1 + p \cdot 1 + q = -1 + p + q = 0$$
+So each of the $g-1$ primitive $g$-th roots is a root of $A(\lambda)$.
+
+\textbf{Theorem 1.} Let $(1-\lambda)A(\lambda) = -\lambda^{l_B} + p\lambda^{l_B-l_A} + q$ with $p \in (0,1)$, $q = 1-p$, and $g = \gcd(l_A, l_B)$. We have that:\\
+(1) All roots satisfy $|\lambda| \leq 1$.\\
+(2) There are exactly $g$ roots on the unit circle: [1] $\lambda = 1$ (from the factor $(1-\lambda)$, not a root of $A(\lambda)$ by Lemma 3); [2] the $g-1$ primitive $g$-th roots of unity $e^{2\pi ik/g}$, $k = 1, \ldots, g-1$ (roots of $A(\lambda)$).\\
+(3) If $\gcd(l_A, l_B) = 1$, then all roots of $A(\lambda)$ satisfy $|\lambda| < 1$.
+
+\subsubsection{Two types, same init length, if not coprime, unstable}
+
+\textbf{Theorem 2 (Instability for Non-coprime Case).} Let $\gcd(l_A, l_B) = g > 1$. For any \textcolor{red}{sufficiently large} $l_0 \in \mathbb{N}_+$, the characteristic equation $F(\lambda) = 0$ has at least $g-1$ roots with $|\lambda| > 1$.\\
+\textit{\textcolor{red}{See next subsubsection for simplified }Proof.} Since
+\begin{align*}
+&(1-\lambda)F(\lambda)=J(\lambda) \\
+=& (l_0+1)(1-\lambda)A(\lambda) +(l_0+1)B(\lambda)\\
+=& (l_0+1)(1-\lambda)A(\lambda) + \Bigg[\lambda^{l_B} + (l_A-1)\lambda^{l_B-l_A} - l_A\lambda^{l_B-l_A+1} + q\Big(l_A\lambda^{l_B-l_A+1} + (1-l_A)\lambda^{l_B-l_A} - l_B\lambda + (l_B-1)\Big)\Bigg] \\
+:=&(l_0+1)(1-\lambda)A(\lambda) + \text{Num}(\lambda):=(l_0+1)\Phi(\lambda) +\text{Num}(\lambda)
+\end{align*}
+Consider $\omega = e^{2\pi ik/g}, k = 1, \ldots, g-1$ is a $g-1$ primitive $g$-th roots of unity, we have:\\
+\textbf{Lemma 2.1.}
+\begin{align*}
+\text{Num}(\omega)&= 1 + l_A - 1 - l_A \omega + q ( l_A \omega +1-l_A -l_B \omega +l_B-1 )\\
+&= l_A(1-\omega) + q(l_B-l_A)(1-\omega)=[l_A+q(l_B-l_A)](1-\omega)=(pl_A+ql_B)(1-\omega)
+\end{align*}
+\textbf{Lemma 2.2.}
+\begin{align*}
+&\Phi^\prime(\lambda)=[-\lambda^{l_B}+p\lambda^{l_B-l_A}+q]^\prime=-l_B\lambda^{l_B-1}+p(l_B-l_A)\lambda^{l_B-l_A-1}\\
+\implies & \Phi^\prime(\omega)=-l_B \omega^{-1}+p(l_B-l_A)\omega^{-1}=\omega^{-1}(-l_B+p(l_B-l_A))=-\omega^{-1}(pl_A+ql_B)
+\end{align*}
+\textbf{Lemma 2.3.} \textcolor{blue}{For sufficiently large $l_0$, $g-1$ roots are \textcolor{red}{at least} with $|\lambda|>1$.}\\
+We set $\epsilon = \frac{1}{1+l_0}$ and 
+$$G(\lambda, \epsilon) = \frac{1-\lambda}{1+l_0}F(\lambda)=\Phi(\lambda)+\frac{1}{1+l_0}\text{Num}(\lambda)=\Phi(\lambda)+\epsilon\cdot\text{Num}(\lambda)$$
+and we know that $G(\lambda, \epsilon) \iff (1-\lambda)F(\lambda)=0$. For each primitive $g$-th root $\omega$:
+\begin{align*}
+&G(\omega, \epsilon=0)=\Phi(\omega)=0, \;\frac{\partial G}{\partial \lambda}(\omega,\epsilon=0)=\Phi^\prime(\omega)=-\omega^{-1}(pl_A+ql_B)\neq 0
+\end{align*}
+By implicit function theorem, there exists a unique analytic function $\lambda(\epsilon)$ defined near $\epsilon=0$ with $\lambda(0)=\omega$ and $G(\lambda(\epsilon), \epsilon)=0$. And we have that:
+\begin{align*}
+&G(\lambda(\epsilon), \epsilon)=\Phi(\lambda(\epsilon))+\epsilon \text{Num}(\lambda(\epsilon))=0\\
+\implies& \frac{d}{d\epsilon} G(\lambda(\epsilon), \epsilon) = \frac{\partial G}{\partial \lambda} \cdot \frac{d\lambda}{d\epsilon} + \frac{\partial G}{\partial \epsilon} = 0\\
+\implies &\frac{d}{d\epsilon} G(\lambda(\epsilon), \epsilon) = [\Phi^\prime(\lambda) + \epsilon \cdot \text{Num}^\prime(\lambda)]\cdot \frac{d\lambda}{d\epsilon} + \text{Num}(\lambda)=0\\
+\overset{\epsilon=0, \lambda(0)=\omega}{\implies}&\frac{d}{d\epsilon} G(\omega, 0) = \Phi^\prime(\omega)\cdot \frac{d\lambda}{d\epsilon}(0) + \text{Num}(\omega)=0\\
+\implies & \lambda^\prime(0)=-\frac{\text{Num}(\omega)}{\Phi'(\omega)} = \omega(1-\omega)
+\end{align*}
+So using the Taylor expansion we have
+\begin{align*}
+\lambda(\epsilon) = \lambda(0) + \lambda^\prime(0) \cdot \epsilon + O(\epsilon^2) = \omega + \omega(1-\omega) \cdot \frac{1}{l_0+1} + O\left(\frac{1}{(l_0+1)^2}\right)=\omega\left(1 + \frac{1-\omega}{l_0+1}\right) + O\left(\frac{1}{(l_0+1)^2}\right)
+\end{align*}
+Next we compute $|1 + \epsilon(1-\omega)|^2$:
+\begin{align*}
+&1 + \epsilon(1-\omega) = \left(1 + \epsilon(1-\cos\theta)\right) - i\epsilon\sin\theta\\
+\implies &\left|1 + \epsilon(1-\omega)\right|^2 = \left(1 + \epsilon(1-\cos\theta)\right)^2 + \epsilon^2\sin^2\theta\\
+=& 1 + 2\epsilon(1-\cos\theta) + \epsilon^2\left[(1-\cos\theta)^2 + \sin^2\theta\right]\\
+=& 1 + 2\epsilon(1-\cos\theta) + \epsilon^2[2(1-\cos\theta)]\\
+=&1 + 2\epsilon(1-\cos\theta)(1 + \epsilon)
+\end{align*}
+And $\omega\neq 0 \implies \theta\neq 0 \implies \cos \theta < 1 \implies 1-\cos\theta>0$, so we have that
+$$\left|1 + \frac{1-\omega}{l_0+1}\right|^2 = 1 + \frac{2(1-\cos\theta)}{l_0+1}\left(1 + \frac{1}{l_0+1}\right) > 1$$
+So we have that:
+\begin{align*}
+|\lambda(\epsilon)|=\sqrt{1 + \frac{2(1-\cos\theta)}{l_0+1}\left(1 + \frac{1}{l_0+1}\right)}+O\left(\frac{1}{(l_0+1)^2}\right)>1
+\end{align*}
+% \textbf{Lemma 2.4.} For $\epsilon = 0$, $g-1$ roots are at the unit circle; For $\epsilon \in (0,a)$, $a$ sufficiently small, we have proved that $g-1$ roots are out of the unit circle. \textcolor{red}{So next we need to prove that for all finite $l_0\in \mathbb{N}_+$, $F(\lambda)=0$ has not root on the unit circle.} Then with the continuos property we can prove the $g-1$ roots can not move back into the unit circle for $\epsilon \in [a,\frac{1}{2}]$.\\
+% \textit{Proof}. $|\lambda|=1, F(\lambda)=0$, we know that $\lambda\neq 1$ because:
+% \begin{align*}
+% F(1)=(l_0+1) + \sum_{m=1}^{l_A-1}(l_0+m+1)+ (1-p)\sum_{m=l_A}^{l_B-1}(l_0+m+1)>0
+% \end{align*}
+% If $\lambda^g = 1$, then $\Phi(\lambda)=0$, we have that $\text{Num}(\lambda)=0$, which contradicts with Lemma 2.1.\\
+% If $\lambda^g \neq 1$, we have 
+% $$l_0+1 = -\frac{\text{Num}(\lambda)}{\Phi(\lambda)}: = R(\theta)\in \mathbb{N}_{+}, \lambda = e^{i\theta}$$
+
+\subsubsection{Two types, same init length, if not coprime, unstable, simplified proof}
+We can use the equation to simplify the proof of Theorem 2:
+$$F(\lambda)= (l_0+l_B)A(\lambda)-\lambda A^\prime(\lambda)$$
+Consider $\omega = e^{2\pi ik/g}, k = 1, \ldots, g-1$ is a $g-1$ primitive $g$-th roots of unity, since
+\begin{align*}
+&(1-\lambda)A(\lambda) = -\lambda^{l_B} + p\lambda^{l_B-l_A} + q\\
+\implies & -A(\lambda) + (1-\lambda)A^\prime(\lambda) = -l_B\lambda^{l_B-1} + p(l_B-l_A)\lambda^{l_B-l_A-1}\\
+\implies &A^\prime(\omega) = \frac{-\omega^{-1}(pl_A + ql_B)}{1-\omega}
+\end{align*}
+we have:
+$$F(\omega)=-\omega A^\prime(\omega)= \frac{pl_A + ql_B}{1-\omega}\neq 0$$
+We define:
+$$G(\lambda, \epsilon) = A(\lambda) - \epsilon \lambda A^\prime(\lambda) = \epsilon F(\lambda), \epsilon = \frac{1}{l_0+l_B}$$
+Then at $\omega$ we have $A(\omega)=0$, $G(\omega,0)=0$, $\frac{\partial G}{\partial \lambda}(\omega,0)=A^\prime(\omega)\neq 0$. And 
+\begin{align*}
+&\frac{\partial G}{\partial \epsilon} = -\lambda A^\prime(\lambda) \implies \frac{\partial G}{\partial \epsilon}\bigg|_{(\omega,0)} = -\omega A^\prime(\omega)\\
+\implies &\lambda^\prime(0) = -\frac{\partial G/\partial \epsilon}{\partial G/\partial \lambda}\bigg|_{(\omega,0)} = -\frac{-\omega A^\prime(\omega)}{A^\prime(\omega)} = \omega\\
+\implies & \lambda(\epsilon) = \omega(1 + \epsilon) + O(\epsilon^2), \quad |\lambda| = 1 + \epsilon + O(\epsilon^2) > 1
+\end{align*}
+
+\subsubsection{Two types, same init length, coprime, stable}
+\textbf{Theorem 3 (Stability for Coprime Case).} Let $\gcd(l_A, l_B) = 1$. For any \textcolor{red}{sufficiently large} $l_0 \in \mathbb{N}_+$, the characteristic equation $F(\lambda) = 0$ has all roots with $|\lambda| < 1$.\\
+\textit{Proof.} We also define:
+$$G(\lambda, \epsilon) = A(\lambda) - \epsilon \lambda A^\prime(\lambda) = \epsilon F(\lambda), \epsilon = \frac{1}{l_0+l_B}$$
+when $\epsilon > 0$, we have $G(\lambda, \epsilon) = 0 \iff F(\lambda) = 0$. Since $\gcd(l_A, l_B) = 1$, all roots of $A(\lambda)$ are with $|\lambda|<1$. We set:
+$$r := \max_{1 \leq j \leq l_B-1} |\alpha_j| < 1, A(\alpha_j)=0$$
+\textcolor{red}{We assume each root $\alpha_j$ is a simple root}. For each $\alpha_j$ we use the IFT:
+\begin{align*}
+&G(\alpha_j, 0) = A(\alpha_j) = 0, \; \dfrac{\partial G}{\partial \lambda}(\alpha_j, 0) =\textcolor{red}{ A^\prime(\alpha_j) \neq 0}\\
+\implies &\exists \lambda_j(\epsilon), \textcolor{blue}{|\epsilon|=\epsilon<\delta_j}, \; \lambda_j(0) = \alpha_j,\; G(\lambda_j(\epsilon), \epsilon) = 0\\
+\implies & \lambda_j^\prime(0) = -\frac{\partial G/\partial \epsilon}{\partial G/\partial \lambda}\bigg|_{(\alpha_j, 0)} = -\frac{-\alpha_j A^\prime(\alpha_j)}{A^\prime(\alpha_j)} = \alpha_j\\
+\implies & \lambda_j(\epsilon) = \alpha_j + \alpha_j \cdot \epsilon + O(\epsilon^2) = \alpha_j(1 + \epsilon) + O(\epsilon^2)\\
+\implies & |\lambda_j(\epsilon)| = |\alpha_j| \cdot (1 + \epsilon) + O(\epsilon^2)\leq |\alpha_j| \cdot (1 + \epsilon) + C_0 \epsilon^2, \epsilon\leq \delta^* 
+\end{align*}
+So the stable condition is:
+\begin{align*}
+&\epsilon < \Delta := \min_{1\leq j\leq l_B-1} \{\delta_j\},\quad |\lambda_j(\epsilon)| = |\alpha_j|(1 + \epsilon) +C_0 \epsilon^2\leq r(1 + \epsilon) + C_0 \epsilon^2 < 1,\quad \epsilon\leq \delta^* \\
+\iff & \epsilon < \epsilon^* := \min \left\{ \frac{-r + \sqrt{r^2 + 4C_0(1-r)}}{2C_0}, \delta^*, \Delta \right\}
+\end{align*}
+
+\textbf{Lemma 3.1.}$(1-\lambda)A(\lambda):=P(\lambda) = -\lambda^{l_B}+p\lambda^{l_B-l_A}+q$. For generic $p \in (0,1)$, all roots of $P(\lambda)$ are simple.\\
+\textit{Proof.} If $\lambda_0\neq 0$ such that $P(\lambda_0)=0$ and $P^\prime(\lambda_0)=0$. We have:
+\begin{align*}
+P^\prime(\lambda_0)=0 \iff -l_B \lambda_0^{l_B-1} + p(l_B-l_A)\lambda_0^{l_B-l_A-1} = 0 \overset{\lambda_0\neq 0}{\implies} \lambda_0^{l_A} = \frac{p(l_B-l_A)}{l_B} > 0
+\end{align*}
+and we set $x=\lambda_0^{l_A}$, we have:
+\begin{align*}
+P(\lambda_0)=0 &\iff -\lambda_0^{l_B} + p\lambda_0^{l_B-l_A} + q = 0 \iff -x \cdot \lambda_0^{l_B-l_A} + p\lambda_0^{l_B-l_A} + q = 0\\
+&\iff (p - x)\lambda_0^{l_B-l_A} = -q \iff \lambda_0^{l_B-l_A} = \frac{-q}{p - x} = \frac{-q}{p - \frac{p(l_B-l_A)}{l_B}} = \frac{-q}{\frac{pl_A}{l_B}} = -\frac{ql_B}{pl_A} < 0
+\end{align*}
+So we have that:
+\begin{align*}
+\lambda_0^{l_A} = \dfrac{p(l_B-l_A)}{l_B} > 0,\;\lambda_0^{l_B-l_A} = -\dfrac{ql_B}{pl_A} < 0
+\end{align*}
+We first only consider the length instead of the angel, we know that:
+\begin{align*}
+&|\lambda_0^{l_B}|=|\lambda_0^{l_A}|\cdot |\lambda_0^{l_B-l_A}|=\dfrac{p(l_B-l_A)}{l_B}\cdot \dfrac{ql_B}{pl_A}=\dfrac{q(l_B-l_A)}{l_A}=|\lambda_0|^{l_B}=\left(\dfrac{p(l_B-l_A)}{l_B}\right)^{\frac{l_B}{l_A}}\\
+\iff &\left(\dfrac{q(l_B-l_A)}{l_A}\right)^{l_A} = \left(\dfrac{p(l_B-l_A)}{l_B}\right)^{l_B} \iff \frac{q^{l_A}}{p^{l_B}}=(l_B-l_A)^{l_B-l_A}\cdot\frac{l_A^{l_A}}{l_B^{l_B}}:=C
+\end{align*}
+The function $h(p) = (1-p)^{l_A}/p^{l_B}$ is strictly decreasing on $(0,1)$ with $h(0^+)=+\infty$ and $h(1^-)=0$. Thus $h(p)=C$ has exactly one solution $p^* \in (0,1)$. \textcolor{blue}{We even do not check the angel condition.} Therefore, multiple roots can only occur when $p = p^*$, a measure-zero set. For generic $p \in (0,1)$, all roots of $P(\lambda)$ are simple.
+
+\subsubsection{Two types, same init length, if not coprime, unstable, but stable initial condition}
+For the $\{X_t\}$ sequence:
+\begin{align*}
+(l_0+1)X_{t+1}=&(l_0+l_B)(1-p)X_{t-l_B+1}+\big[(l_0+l_A)p-(1-p)\big]X_{t-l_A+1}-\sum_{i=t-l_A+2}^{t}X_{i}-(1-p)\sum_{i=t-l_B+2}^{t-l_A}X_{i}
+\end{align*}
+$D_t=X_{t+1}-X_t$ is the first-order difference of $\{X_t\}$:
+\begin{align*}
+(l_0+1)D_t + \sum_{m=1}^{l_A-1}(l_0+m+1)D_{t-m} + (1-p)\sum_{m=l_A}^{l_B-1}(l_0+m+1)D_{t-m} = 0
+\end{align*}
+The characteristic function of $\{D_t\}$ is:
+\begin{align*}
+F_{D}(\lambda)=(l_0+1)\lambda^{l_B-1} + \sum_{m=1}^{l_A-1}(l_0+m+1)\lambda^{l_B-1-m} + (1-p)\sum_{m=l_A}^{l_B-1}(l_0+m+1)\lambda^{l_B-1-m}
+\end{align*}
+And the characteristic function of $\{X_t\}$ is $F_X(\lambda)=(\lambda-1)F_D(\lambda)$. By Lemma 3.1, we know that for sufficiently large $l_0$, the roots of $F_D(\lambda)$ are very close to the roots of $A(\lambda)$, so they are simple roots. Consider:
+$$\begin{pmatrix} 1 & 1 & \cdots & 1 & 1 & \cdots & 1 \\ 1 & \lambda_1 & \cdots & \lambda_{g-1} & \lambda_g & \cdots & \lambda_{l_B-1} \\ \vdots & \vdots & & \vdots & \vdots & & \vdots \\ 1 & \lambda_1^{l_B-1} & \cdots & \lambda_{g-1}^{l_B-1} & \lambda_g^{l_B-1} & \cdots & \lambda_{l_B-1}^{l_B-1} \end{pmatrix} \begin{pmatrix} c_0 \\ c_1 \\ \vdots \\ c_{g-1} \\ c_g \\ \vdots \\ c_{l_B-1} \end{pmatrix} = \begin{pmatrix} X_0 \\ X_1 \\ \vdots \\ X_{l_B-1} \end{pmatrix}$$
+where $\mu_0 = 1$ corresponds to the fluid benchmark, $\mu_1 = \lambda_1, \ldots, \mu_{g-1} = \lambda_{g-1}$ are unstable roots with norm bigger than $1$ and $\mu_g = \lambda_g, \ldots, \mu_{l_B-1} = \lambda_{l_B-1}$ are stable roots. We have:
+\begin{align*}
+& V = \begin{pmatrix} V_S & V_U \end{pmatrix}, V_S \in \mathbb{C}^{l_B \times (l_B - g + 1)}, V_U \in \mathbb{C}^{l_B \times (g-1)},\quad \mathbf{c} = \begin{pmatrix} \mathbf{c}_S \\ \mathbf{c}_U \end{pmatrix}\\
+\implies & V_S \mathbf{c}_S + V_U \mathbf{c}_U = \mathbf{X}
+\end{align*}
+\textcolor{red}{The system is stable $\iff \mathbf{c}_U = \mathbf{0} \iff V_S \mathbf{c}_S = \mathbf{X}$.} There are $l_B$ functions and $l_B-g+1$ variables. The solution exists if and only if:
+$$\mathbf{X} \in \text{Col}(V_S)$$
+The fluid benchmark $\mathbf{X} = C \cdot (1, 1, \ldots, 1)^T = C \cdot \mathbf{v}_0$ is in the corresponding eigen space of $\mu_0=1$. So
+$$\text{Fluid benchmark} = \text{span}\{\mathbf{v}_0\} = E^c \subset \text{Col}(V_S)$$
+
+\subsubsection{How about single type}
+$$(l_0+1)X_{t+1}=(l_0+l_B)X_{t-l_B+1}-\sum_{i=t-l_B+2}^{t}X_{i}$$
+$D_t=X_{t+1}-X_t$ is the first-order difference of $\{X_t\}$:
+$$(l_0+1)D_t + \sum_{m=1}^{l_B-1}(l_0+m+1)D_{t-m} = 0$$
+The characteristic function:
+$$F_D(\lambda)=(l_0+1)\lambda^{l_B-1} + \sum_{m=1}^{l_B-1}(l_0+m+1)\lambda^{t-1-m} = 0$$
+and the limit function is:
+\begin{align*}
+&A(\lambda) = \lim_{l_0 \to \infty} \frac{F_D(\lambda)}{l_0+1} = \lambda^{l_B} - 1 \implies (1-\lambda)A(\lambda)=(1-\lambda)(\lambda^{l_B}-1)\\
+\implies & \textcolor{red}{(1-\lambda)A(\lambda)=0 \iff \lambda^{l_B} = 1 \iff \lambda_k = e^{2\pi i k / l_B}, k = 0, 1, \ldots, l_B - 1}
+\end{align*}
+\textcolor{blue}{And $F_D(\lambda)$ still satisfies:
+$$F(\lambda)= (l_0+l_B)A(\lambda)-\lambda A^\prime(\lambda)$$}So use the Theorem 2., all roots are out of the unit disc, the only stable initial condition is just the fluid benchmark.
+
+\subsubsection{Multi types, same init length}
+We consider types $A,B,C$ with same init length $l_0$ and decode length $l_A < l_B < l_C$, with the arrival rates: $\lambda_A,\lambda_B,\lambda_C$. And we define: 
+$$ p_i = \frac{\lambda_i}{\lambda_A+\lambda_B+\lambda_C},\;i=A,B,C$$
+We assume there is no eviction. We have:
+\begin{align*}
+&(l_0+1)X_{t+1}\\
+=&(l_0+l_C+1)p_C\cdot X_{t-l_C+1}+(l_0+l_B+1)p_B\cdot X_{t-l_B+1}+(l_0+l_A+1)p_A\cdot X_{t-l_A+1}
+\\
+&-\sum_{i=t-l_A+2}^{t}X_i - (1-p_A)\sum_{i=t-l_B+2}^{t-l_A}X_i - (1-p_A-p_B)\sum_{i=t-l_C+2}^{t-l_B}X_i 
+\end{align*}
+$D_t=X_{t+1}-X_t$ is the first-order difference of $\{X_t\}$:
+\begin{align*}
+(l_0+1)D_t + \sum_{m=1}^{l_A-1}(l_0+m+1)D_{t-m} + (1-p_A)\sum_{m=l_A}^{l_B-1}(l_0+m+1)D_{t-m}+ (1-p_A-p_B)\sum_{m=l_B}^{l_C-1}(l_0+m+1)D_{t-m}=0
+\end{align*}
+We define:
+$$F_D(\lambda)=(l_0+1)\lambda^{l_C-1} + \sum_{m=1}^{l_A-1}(l_0+m+1)\lambda^{l_C-1-m} + (1-p_A)\sum_{m=l_A}^{l_B-1}(l_0+m+1)\lambda^{l_C-1-m}+ (1-p_A-p_B)\sum_{m=l_B}^{l_C-1}(l_0+m+1)\lambda^{l_C-1-m}$$
+and the limit function is:
+\begin{align*}
+A(\lambda) =& \lim_{l_0 \to \infty} \frac{F_D(\lambda)}{l_0+1}\\
+=&\lambda^{l_C-1} + \sum_{m=1}^{l_A-1}\lambda^{l_C-1-m} + (1-p_A)\sum_{m=l_A}^{l_B-1}\lambda^{l_C-1-m}+ (1-p_A-p_B)\sum_{m=l_B}^{l_C-1}\lambda^{l_C-1-m}\\
+\implies &\textcolor{blue}{(1-\lambda)A(\lambda) = -\lambda^{l_C} + p_A\lambda^{l_C-l_A} + p_B\lambda^{l_C-l_B} + p_C}
+\end{align*}
+And the correction term
+\begin{align*}
+B(\lambda)&=F_D(\lambda)-(l_0+1)A(\lambda)\\
+&=\sum_{m=1}^{l_A-1}m\lambda^{l_C-1-m} + (1-p_A)\sum_{m=l_A}^{l_B-1}m\lambda^{l_C-1-m}+ (1-p_A-p_B)\sum_{m=l_B}^{l_C-1}m\lambda^{l_C-1-m}
+\end{align*}
+Also compute:
+\begin{align*}
+&\lambda A^\prime(\lambda)\\
+=&(l_C-1)\lambda^{l_C-1} +(l_C-1-m) \sum_{m=1}^{l_A-1}\lambda^{l_C-1-m} \\
+&+ (l_C-1-m) (1-p_A)\sum_{m=l_A}^{l_B-1}\lambda^{l_C-1-m}+ (l_C-1-m) (1-p_A-p_B)\sum_{m=l_B}^{l_C-1}\lambda^{l_C-1-m}\\
+=&(l_C-1)A(\lambda)-B(\lambda)
+\end{align*}
+So we have that: \textcolor{red}{$F_D(\lambda)=(l_0+l_C)A(\lambda)-\lambda A^\prime(\lambda)$}
+\textcolor{blue}{
+$$F_D(\lambda)=(l_0+1)A(\lambda)+B(\lambda)=(l_0+1)A(\lambda)+(l_C-1)A(\lambda)-\lambda A^\prime(\lambda)=(l_0+l_C)A(\lambda)-\lambda A^\prime(\lambda)$$
+Next we give the theorem similar to Theorem 1.}
+
+\subsubsection{Multi types, same init length, limit function}
+
+\textbf{Lemma 4.1.} For all root $\lambda$ such that $(1-\lambda)A(\lambda)=0$, $|\lambda|\leq 1$.\\
+\textit{Proof.} First consider
+$$|\lambda|^{l_C}=|p_A\lambda^{l_C-l_A}+p_B\lambda^{l_C-l_B}+p_C|\leq p_A|\lambda|^{l_C-l_A} + p_B|\lambda|^{l_C-l_B} + p_C$$
+Consider $g(x)=x^{l_C}-p_Ax^{l_C-l_A}-p_Bx^{l_C-l_B}-p_C$, we have $g(1)=1-p_A-p_B-p_C=0$ and 
+$$g^\prime(x)=l_Cx^{l_C-1}-p_A(l_C-l_A)x^{l_C-l_A-1}-p_B(l_C-l_B)x^{l_C-l_B-1}$$
+At $x=1$:
+$$g^\prime(1)=l_C-p_A(l_C-l_A)-p_B(l_C-l_B)=p_Al_A+p_Bl_B+p_Cl_C>0$$
+If $|\lambda|>1$, since $g(1)=0$, $g^\prime(1)>0$, and $g$ is continuous and eventually dominated by $x^{l_C}$, we have $g(|\lambda|)>g(1)=0$, which contradicts
+$$|\lambda|^{l_C}\leq p_A|\lambda|^{l_C-l_A} + p_B|\lambda|^{l_C-l_B} + p_C$$
+
+\textbf{Lemma 4.2.} For all root $\lambda$ such that $(1-\lambda)A(\lambda)=0$, if $|\lambda|=1$, then $\lambda^g=1, g=\gcd(l_A,l_B,l_C)$.\\
+\textit{Proof.} Let $|\lambda|=1$, and $(1-\lambda)A(\lambda)=0$, for complex number $\lambda$ we have
+\begin{align*}
+&|\lambda|^{l_C}=1=|p_A\lambda^{l_C-l_A}+p_B\lambda^{l_C-l_B}+p_C|\leq p_A|\lambda|^{l_C-l_A} + p_B|\lambda|^{l_C-l_B} + p_C =1
+\end{align*}
+The equality holds iff $\lambda^{l_C-l_A} = \lambda^{l_C-l_B} = 1$, which implies:
+\begin{align*}
+& \lambda^{l_C-l_A} = 1,\; \lambda^{l_C-l_B} = 1 \\
+\implies & \lambda^{l_C} = p_A\lambda^{l_C-l_A}+p_B\lambda^{l_C-l_B}+p_C = p_A+p_B+p_C =1\\
+\implies & \lambda^{l_A} = \lambda^{l_B} = \lambda^{l_C} = 1\\
+\implies & \lambda^g=1, \quad g=\gcd(l_A,l_B,l_C)
+\end{align*}
+
+\textbf{Lemma 4.3.} $\lambda = 1$ is not a root of $A(\lambda)$.\\
+\textit{Proof.} We have
+\begin{align*}
+A(\lambda)=&\lambda^{l_C-1} + \sum_{m=1}^{l_A-1}\lambda^{l_C-1-m} + (1-p_A)\sum_{m=l_A}^{l_B-1}\lambda^{l_C-1-m}+ p_C\sum_{m=l_B}^{l_C-1}\lambda^{l_C-1-m}
+\end{align*}
+Substituting $\lambda = 1$:
+$$A(1) = 1 + (l_A - 1) + (1-p_A)(l_B - l_A) + p_C(l_C - l_B) = p_Al_A + p_Bl_B + p_Cl_C > 0$$
+Therefore $\lambda = 1$ is not a root of $A(\lambda)$.
+
+\textbf{Lemma 4.4.} If $g = \gcd(l_A, l_B, l_C) > 1$, then all primitive $g$-th roots of unity $\omega = e^{2\pi ik/g}$ ($k = 1, \ldots, g-1$) are roots of $A(\lambda) = 0$.\\
+\textit{Proof.} Let $\omega^g = 1$ with $\omega \neq 1$, and we have that $l_A = ag$, $l_B = bg$, $l_C = cg$ where $\gcd(a,b,c) = 1$. Then we have:
+\begin{align*}
+\omega^{l_A} = (\omega^g)^a = 1; \quad  \omega^{l_B} = (\omega^g)^b = 1;  \quad \omega^{l_C} = (\omega^g)^c = 1
+\end{align*}
+So for $(1-\lambda)A(\lambda) = -\lambda^{l_C} + p_A\lambda^{l_C-l_A} + p_B\lambda^{l_C-l_B} + p_C$ we have
+$$(1-\omega)A(\omega) = -1 + p_A \cdot 1 + p_B \cdot 1 + p_C = -1 + p_A + p_B + p_C = 0$$
+Since $\omega \neq 1$, we have $A(\omega) = 0$. So each of the $g-1$ primitive $g$-th roots is a root of $A(\lambda)$.
+
+\textbf{Theorem 4.} Let $(1-\lambda)A(\lambda) = -\lambda^{l_C} + p_A\lambda^{l_C-l_A} + p_B\lambda^{l_C-l_B} + p_C$ with $p_A, p_B, p_C \in (0,1)$, $p_A+p_B+p_C = 1$, and $g = \gcd(l_A, l_B, l_C)$. We have that:\\
+(1) All roots satisfy $|\lambda| \leq 1$.\\
+(2) There are exactly $g$ roots on the unit circle: [1] $\lambda = 1$ (from the factor $(1-\lambda)$, not a root of $A(\lambda)$ by Lemma 4.3); [2] the $g-1$ primitive $g$-th roots of unity $e^{2\pi ik/g}$, $k = 1, \ldots, g-1$ (roots of $A(\lambda)$).\\
+(3) If $\gcd(l_A, l_B, l_C) = 1$, then all roots of $A(\lambda)$ satisfy $|\lambda| < 1$.
+
+\subsubsection{What about different init length, the general form}
+\textcolor{red}{The general type:
+$$[(l_0^A+1)p_A+(l_0^B+1)p_B]X_{t+1} = (l_0^A+l_A+1)p_AX_{t-l_A+1}+(l_0^B+l_B+1)p_BX_{t-l_B+1} - p_A \sum_{m=0}^{l_A-1}X_{t-m}- p_B \sum_{m=0}^{l_B-1}X_{t-m}$$}
+Let $l_0^A=l_0^B=l_0$, we recover:
+$$(l_0+1)X_{t+1} = (l_0^A+l_A+1)p_AX_{t-l_A+1}+(l_0^B+l_B+1)p_BX_{t-l_B+1} - p_A \sum_{m=0}^{l_A-1}X_{t-m}- p_B \sum_{m=0}^{l_B-1}X_{t-m}$$
+$D_t=X_{t+1}-X_t$ is the first-order difference of $\{X_t\}$:
+\begin{align*}
+p_A\sum_{m=0}^{l_A-1} (l_0^A + m + 1) D_{t-m} + p_B\sum_{m=0}^{l_B-1} (l_0^B + m + 1) D_{t-m}= 0
+\end{align*}
+If $l_0^A=l_0^B=l_0$ and $l_A<l_B$, we recover:
+\begin{align*}
+&p_A\sum_{m=0}^{l_A-1} (l_0^A + m + 1) D_{t-m} + p_B\sum_{m=0}^{l_B-1} (l_0^B + m + 1) D_{t-m}\\
+=&p_A\sum_{m=0}^{l_A-1} (l_0 + m + 1) D_{t-m} + p_B\sum_{m=0}^{l_B-1} (l_0 + m + 1) D_{t-m}\\
+=&(l_0+1)D_{t}+\sum_{m=1}^{l_A-1} (l_0 + m + 1) D_{t-m} + p_B\sum_{m=l_A}^{l_B-1} (l_0 + m + 1) D_{t-m}
+\end{align*}
+For the general form, if $l_A<l_B$, we will get the characteristic function:
+\begin{align*}
+F_D(\lambda)&=p_A\sum_{m=0}^{l_A-1} (l_0^A + m + 1) \lambda^{l_B-1-m} + p_B\sum_{m=0}^{l_B-1} (l_0^B + m + 1) \lambda^{l_B-1-m} \\
+&= [(l_0^A+1)p_A+(l_0^B+1)p_B] \lambda^{l_B-1}+ p_A\sum_{m=1}^{l_A-1} (l_0^A + m + 1) \lambda^{l_B-1-m} + p_B\sum_{m=1}^{l_B-1} (l_0^B + m + 1) \lambda^{l_B-1-m}
+\end{align*}
+The limit function is:
+\begin{align*}
+A(\lambda) =\lambda^{l_B-1}+ p_A\sum_{m=1}^{l_A-1}  \lambda^{l_B-1-m} + p_B\sum_{m=1}^{l_B-1}  \lambda^{l_B-1-m}
+\end{align*}
+The correction function:
+\begin{align*}
+B(\lambda):=&F(\lambda)- [(l_0^A+1)p_A+(l_0^B+1)p_B]A(\lambda) \\
+=&p_A\sum_{m=1}^{l_A-1} [m+p_B(l_0^A-l_0^B)] \lambda^{l_B-1-m} + p_B\sum_{m=1}^{l_B-1} [m+p_A(l_0^B-l_0^A)]\lambda^{l_B-1-m}
+\end{align*}
+Also compute:
+\begin{align*}
+&\lambda A^\prime(\lambda)\\
+=&(l_B-1)\lambda^{l_B-1}+ p_A\sum_{m=1}^{l_A-1}(l_B-1-m)  \lambda^{l_B-1-m} + p_B\sum_{m=1}^{l_B-1}(l_B-1-m)  \lambda^{l_B-1-m}\\
+=&(l_B-1)A(\lambda)\textcolor{red}{-B(\lambda)-p_Ap_B(l_0^A-l_0^B)\sum_{m=l_A}^{l_B-1} \lambda^{l_B-1-m}}\\
+=&(l_B-1)A(\lambda)\textcolor{red}{-B(\lambda)-p_Ap_B(l_0^A-l_0^B)\frac{\lambda^{l_B-l_A} - 1}{\lambda - 1}}
+\end{align*}
+So we have that:
+\begin{align*}
+F(\lambda) &= [(l_0^A+1)p_A+(l_0^B+1)p_B]A(\lambda)+B(\lambda)\\
+&=[(l_0^A+1)p_A+(l_0^B+1)p_B]A(\lambda)+(l_B-1)A(\lambda)\textcolor{red}{-p_Ap_B(l_0^A-l_0^B)\frac{\lambda^{l_B-l_A} - 1}{\lambda - 1}}-\lambda A^\prime(\lambda)\\
+&=-\lambda A^\prime(\lambda)+[l_0^Ap_A+l_0^Bp_B+l_B]A(\lambda)\textcolor{red}{-p_Ap_B(l_0^A-l_0^B)\frac{\lambda^{l_B-l_A} - 1}{\lambda - 1}}
+\end{align*}
+Notice that:
+$$C(\lambda):=\frac{\lambda^{l_B-l_A} - 1}{\lambda - 1}=0, \lambda^{l_B-l_A}=1$$
+So for the non-coprime proof, this correction term is zero, the proof of the non-coprime is the same. For the coprime case, we need carefully compute:
+\begin{align*}
+G(\lambda,\epsilon) = A(\lambda)-\epsilon \big[ \lambda A^\prime(\lambda) + \delta C(\lambda) \big],\;\epsilon = \frac{1}{(l_0^A+1)p_A+(l_0^B+1)p_B},\; \delta:=p_Ap_B(l_0^A-l_0^B)
+\end{align*}
+And
+\begin{align*}
+&\lambda_j^\prime(\epsilon) = -  \frac{\partial G/\partial \epsilon}{\partial G/\partial \lambda}\bigg|_{(\alpha_j, 0)} = \frac{\alpha_j A^\prime(\alpha_j)+\delta C(\alpha_j)}{A^\prime(\alpha_j)}=\alpha_j+\delta \frac{C(\alpha_j)}{A^\prime(\alpha_j)}\\
+\implies &\lambda_j(\epsilon)=\alpha_j+(\alpha_j+\delta  \frac{C(\alpha_j)}{A^\prime(\alpha_j)})\epsilon + O(\epsilon^2)
+\end{align*}
+Since $(1-\lambda)A(\lambda) = -\lambda^{l_B}+p_A\lambda^{l_B-l_A}+p_B$, we have:
+\begin{align*}
+&-A(\lambda)+(1-\lambda)A^\prime(\lambda)=-l_B\lambda^{l_B-1}+p_A(l_B-l_A)\lambda^{l_B-l_A-1}\\
+\overset{A(\alpha_j)=0}{\implies} &(1-\alpha_j)A^\prime(\alpha_j)=-l_B\alpha_j^{l_B-1}+p_A(l_B-l_A)\alpha_j^{l_B-l_A-1}\\
+\iff & A^\prime(\alpha_j) = \frac{-l_B\alpha_j^{l_B-1}+p_A(l_B-l_A)\alpha_j^{l_B-l_A-1}}{1-\alpha_j}
+\end{align*}
+And
+\begin{align*}
+&(1-\alpha_j)A(\alpha_j)=0\iff \alpha_j^{l_B}=p_A\alpha_j^{l_B-l_A}+p_B\\
+\implies & A^\prime(\alpha_j) = -\frac{p_Al_A\alpha_j^{l_B-l_A}+p_Bl_B}{\alpha_j(1-\alpha_j)}
+\end{align*}
+So we have that:
+\begin{align*}
+&\frac{C(\alpha_j)}{A^\prime(\alpha_j)}=\frac{(1-\alpha_j^{l_B-l_A} ) \alpha_j}{p_A l_A \alpha_j^{l_B-l_A} + p_B l_B}
+\end{align*}
+Then we obtain that
+\begin{align*}
+\lambda_j(\epsilon)&=\alpha_j+(\alpha_j+\delta\cdot\frac{(1-\alpha_j^{l_B-l_A} ) \alpha_j}{p_A l_A \alpha_j^{l_B-l_A} + p_B l_B})\epsilon + O(\epsilon^2)\\
+&=\alpha_j\big[1+ \epsilon + \epsilon\delta\cdot\frac{1-\alpha_j^{l_B-l_A} }{p_A l_A \alpha_j^{l_B-l_A} + p_B l_B}\big]+ O(\epsilon^2)\\
+&=\alpha_j\big[1+ \epsilon + \epsilon\cdot \frac{p_Ap_B(l_0^A-l_0^B)(1-\alpha_j^{l_B-l_A}) }{p_A l_A \alpha_j^{l_B-l_A} + p_B l_B}\big]+ O(\epsilon^2)
+\end{align*}
+\textcolor{blue}{Notice that:
+\begin{align*}
+&\norm{\epsilon\cdot \frac{p_Ap_B(l_0^A-l_0^B)(1-\alpha_j^{l_B-l_A}) }{p_A l_A \alpha_j^{l_B-l_A} + p_B l_B}}\\
+=&\norm{\frac{l_0^A-l_0^B}{(l_0^A+1)p_A+(l_0^B+1)p_B}\cdot \frac{p_Ap_B(1-\alpha_j^{l_B-l_A}) }{p_A l_A \alpha_j^{l_B-l_A} + p_B l_B}}\\
+=&\norm{\frac{l_0^A-l_0^B}{(l_0^A+1)p_A+(l_0^B+1)p_B}}\cdot \norm{\frac{p_Ap_B(1-\alpha_j^{l_B-l_A}) }{p_A l_A \alpha_j^{l_B-l_A} + p_B l_B}}\\
+\leq &\norm{\frac{l_0^A-l_0^B}{(l_0^A+1)p_A+(l_0^B+1)p_B}}\cdot \norm{\frac{p_Ap_B }{p_B l_B-p_A l_A }}
+\end{align*}
+}
+\textcolor{red}{So there at least needs an assumption:
+$$\norm{\frac{l_0^A-l_0^B}{(l_0^A+1)p_A+(l_0^B+1)p_B}}\to 0.$$}
+
+% The change to the matrix~\ref{matrix:single_type_no_eviction} is that:
+% \begin{align*}
+% \mathbf{B}_1^\prime = \mathbf{B}_1 + \begin{bmatrix}
+% 0&\cdots&0&\frac{l_0+l_A+1}{l_0+1}p&0&\cdots&0\\
+% 0&\cdots&0&0&0&\cdots&0\\
+% \vdots&&\vdots&\vdots&\vdots&&\vdots\\
+% 0&\cdots&0&0&0&\cdots&0\\
+% 0&\cdots&0&1-p&0&\cdots&0\\
+% \vdots&&\vdots&\vdots&\vdots&&\vdots\\
+% 0&\cdots&0&0&0&\cdots&0
+% \end{bmatrix}\in \mathbb{R}^{l_B\times l_B}, \text{non zero term is at } [1,l_A],\;[l_A+1,l_A]
+% \end{align*}
+% where 
+% $$\alpha:=-\frac{1}{l_0+1},\quad \beta:=\frac{l_0+l_B}{l_0+1},\quad \mathbf{B}_1=
+% \begin{bmatrix}
+% \alpha&\alpha&\cdots&\alpha&\beta\\
+% 1&0&\cdots&0&0\\
+% 0&1&\cdots&0&0\\
+% \vdots&\vdots&\ddots&\vdots&\vdots\\
+% 0&0&\cdots&1&0
+% \end{bmatrix}$$

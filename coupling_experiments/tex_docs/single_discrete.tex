@@ -1,0 +1,722 @@
+\subsection{Simple Single Case, Discrete Model}
+
+\subsubsection{Example}
+First, we consider a single example. $l_0=2, l_1=2, B=140$, so the lengths are $2,3,4$, where $4$ is the length of the completed request. Here we first show an one step example, the initial point is $[21,19]$ and assume that the waiting queue $Q_e(0)$ is big enough. 
+
+For $[21,19]$, the current memory is $21*2+19*3=99$, if we execute the batch, the memory is $21*3+19*4=139<140$. Thus, after batch execution, the state becomes $[0,21]$.
+
+The execution of the current batch will need $21*4=84$ memory, so we can admit $(140-84)/(2+1)=18.67\to 18$ requests(assume $Q_e(0)$ is big enough). Then the state before execution is $[18,21]$. The change is as follows, here $B$ means batch execution and $A/E$ means admission or eviction.
+$$[21,19] \overset{B}{\implies} [0,21] \overset{A/E}{\implies} [18,21] \overset{B}{\implies} \cdots$$
+The full dynamics is as follows. The \textcolor{red}{red term denotes the first eviction of the second stage} and the \textcolor{blue}{blue term denotes the limit cycle}.
+\begin{align*}
+&\begin{bmatrix}
+[0,21]\\
+[18,21]
+\end{bmatrix} 
+\overset{B}{\implies} \begin{bmatrix}
+[0,18]\\
+[22,18]
+\end{bmatrix} 
+\overset{B}{\implies} \begin{bmatrix}
+[0,22]\\
+[17,22]
+\end{bmatrix} 
+\overset{B}{\implies} \begin{bmatrix}
+[0,17]\\
+[24,17]
+\end{bmatrix} 
+\overset{B}{\implies} \begin{bmatrix}
+[0,24]\\
+[14,24]
+\end{bmatrix} 
+\overset{B}{\implies} \begin{bmatrix}
+[0,14]\\
+[28,14]
+\end{bmatrix} \\
+\overset{B}{\implies} &\begin{bmatrix}
+[0,28]\\
+[9,28]
+\end{bmatrix} 
+\overset{B}{\implies} \begin{bmatrix}
+[0,9]\\
+[34,9]
+\end{bmatrix} 
+\overset{B}{\implies} \begin{bmatrix}
+[0,34]\\
+[1,34]
+\end{bmatrix} 
+\overset{B}{\implies} \begin{bmatrix}
+[0,1]\\
+[45,1]
+\end{bmatrix} 
+\overset{B}{\implies} \textcolor{red}{\begin{bmatrix}
+[0,45]\\
+[0,35]
+\end{bmatrix} }
+\overset{B}{\implies} \begin{bmatrix}
+[0,0]\\
+[46,0]
+\end{bmatrix} \\
+\overset{B}{\implies} &\begin{bmatrix}
+[0,46]\\
+[0,35]
+\end{bmatrix} 
+\overset{B}{\implies} \textcolor{blue}{\begin{bmatrix}
+[0,0]\\
+[46,0]
+\end{bmatrix}
+\overset{B}{\implies} \begin{bmatrix}
+[0,46]\\
+[0,35]
+\end{bmatrix} 
+\overset{B}{\implies} \begin{bmatrix}
+[0,0]\\
+[46,0]
+\end{bmatrix} 
+\overset{B}{\implies} \cdots}
+\end{align*}
+
+\subsubsection{Initial point}
+Second, still under $l_0=2, l_1=2, B=140$, we consider the initial point as $[x,y]$, satisfying $3x+4y\leq 140$. We assume that the queue $Q_e(0)$ is big enough or arrival rate is big enough (overloaded). And we also assume that the number of request can be float. (Avoid to find the biggest interger smaller than $\frac{140-3x}{4}$.)
+
+(1) Is there fixed point even if the system is overloaded? Yes!
+\begin{align*}
+[x,y] \to [ \frac{140-3x}{4} ,x] = [x,y]\implies x = y =20
+\end{align*}
+Because $20*3+20*4 = 140$.
+\begin{align*}
+&\begin{bmatrix}
+[0,20]\\
+[20,20]
+\end{bmatrix} 
+\overset{B}{\implies} \begin{bmatrix}
+[0,20]\\
+[20,20]
+\end{bmatrix} \overset{B}{\implies}  \cdots
+\end{align*}
+(2) If the initial point is not $[20,20]$ or $[x,20]$. What will happen? Consider $3x_n+4y_n\leq 140$. Let $u_n=x_n-20, v_n=y_n-20$, we get:
+$$\begin{bmatrix} u_{n+1} \\ v_{n+1} \end{bmatrix} = A \begin{bmatrix} u_n \\ v_n \end{bmatrix}, \quad A = \begin{bmatrix} 0 & -\frac{4}{3} \\ 1 & 0 \end{bmatrix}$$
+and we have
+$$A^2 = \begin{bmatrix} 0 & -\frac{4}{3} \\ 1 & 0 \end{bmatrix} \begin{bmatrix} 0 & -\frac{4}{3} \\ 1 & 0 \end{bmatrix} = \begin{bmatrix} -\frac{4}{3} & 0 \\ 0 & -\frac{4}{3} \end{bmatrix} = -\frac{4}{3}I$$
+thus $A^{2k} = \left(-\frac{4}{3}\right)^k I$, and $A^{2k+1} = \left(-\frac{4}{3}\right)^k A$. We can obtain that: For $n = 2k$, 
+$$\begin{bmatrix} u_{2k} \\ v_{2k} \end{bmatrix} = A^{2k} \begin{bmatrix} u_0 \\ v_0 \end{bmatrix} = \left(-\frac{4}{3}\right)^k \begin{bmatrix} x_0-20 \\ y_0-20 \end{bmatrix}$$
+$$\boxed{x_{2k} = 20 + (-1)^k\left(\frac{4}{3}\right)^k(x_0-20),\; y_{2k} = 20 + (-1)^k\left(\frac{4}{3}\right)^k(y_0-20)}$$
+For $n = 2k+1$, 
+$$\begin{bmatrix} u_{2k+1} \\ v_{2k+1} \end{bmatrix} = A^{2k+1} \begin{bmatrix} u_0 \\ v_0 \end{bmatrix} = \left(-\frac{4}{3}\right)^k A \begin{bmatrix} x_0-20 \\ y_0-20 \end{bmatrix}= (-1)^k\left(\frac{4}{3}\right)^k \begin{bmatrix} -\frac{4}{3}(y_0-20) \\ x_0-20 \end{bmatrix}$$
+$$\boxed{x_{2k+1} = 20 - (-1)^k\left(\frac{4}{3}\right)^{k+1}(y_0-20),\; y_{2k+1} = 20 + (-1)^k\left(\frac{4}{3}\right)^k(x_0-20)}$$
+And we need to find the smallest $n^*$ such that $y_n\geq B/4$.\\
+For $n = 2k$,
+$$y_{2k} = 20 + (-1)^k\left(\frac{4}{3}\right)^k(y_0-20) \geq 35\iff (-1)^k\left(\frac{4}{3}\right)^k(y_0-20) \geq 15$$
+(1.1) If $y_0 > 20$ and $k$ is even: $\left(\frac{4}{3}\right)^k(y_0-20) \geq 15\implies k \geq \log_{4/3}\left(\frac{15}{y_0-20}\right)$\\
+(1.2) If $y_0 < 20$ and $k$ is odd: $-\left(\frac{4}{3}\right)^k(y_0-20) \geq 15\implies k \geq \log_{4/3}\left(\frac{15}{20-y_0}\right)$\\
+For $n = 2k+1$,
+$$y_{2k+1} = 20 + (-1)^k\left(\frac{4}{3}\right)^k(x_0-20) \geq 35\iff (-1)^k\left(\frac{4}{3}\right)^k(x_0-20) \geq 15$$
+(1.3) If $x_0 > 20$ and $k$ is even: $k \geq \log_{4/3}\left(\frac{15}{x_0-20}\right)$\\
+(1.4) If $x_0 < 20$ and $k$ is odd: $k \geq \log_{4/3}\left(\frac{15}{20-x_0}\right)$
+
+
+The iteration is:
+$$\begin{bmatrix} x_{n+1} \\ y_{n+1} \end{bmatrix} = \begin{bmatrix} 0 & -\frac{l_0+2}{l_0+1} \\ 1 & 0 \end{bmatrix} \begin{bmatrix} x_n \\ y_n \end{bmatrix} + \begin{bmatrix} \frac{B}{l_0+1} \\ 0 \end{bmatrix}$$
+fixed point: $(x^*, y^*) = \left(\frac{B}{2l_0+3}, \frac{B}{2l_0+3}\right)$
+We can get the solution:\\
+$n = 2k$:
+$$x_{2k} = \frac{B}{2l_0+3} + (-1)^k\left(\frac{l_0+2}{l_0+1}\right)^k\left(x_0 - \frac{B}{2l_0+3}\right)$$
+$$y_{2k} = \frac{B}{2l_0+3} + (-1)^k\left(\frac{l_0+2}{l_0+1}\right)^k\left(y_0 - \frac{B}{2l_0+3}\right)$$
+$n = 2k+1$:
+$$x_{2k+1} = \frac{B}{2l_0+3} - (-1)^k\left(\frac{l_0+2}{l_0+1}\right)^{k+1}\left(y_0 - \frac{B}{2l_0+3}\right)$$
+$$y_{2k+1} = \frac{B}{2l_0+3} + (-1)^k\left(\frac{l_0+2}{l_0+1}\right)^k\left(x_0 - \frac{B}{2l_0+3}\right)$$
+We need to find the smallest $n^*$ such that $y_n \geq \frac{B}{l_0+2}$. We can define: $\alpha = \frac{l_0+2}{l_0+1}$, $\beta = \frac{B}{2l_0+3}$, $\gamma = \frac{B}{l_0+2} - \beta = \frac{B(l_0+1)}{(l_0+2)(2l_0+3)}$. We can get that\\
+For $n = 2k$:
+$$y_{2k} = \beta + (-1)^k\alpha^k(y_0-\beta) \geq \frac{B}{l_0+2} \iff (-1)^k\alpha^k(y_0-\beta) \geq \gamma$$
+(1.1) If $y_0 > \beta$ and $k$ is even: 
+$\alpha^k(y_0-\beta) \geq \gamma \implies k \geq \log_\alpha\left(\frac{\gamma}{y_0-\beta}\right)$\\
+(1.2) If $y_0 < \beta$ and $k$ is odd: 
+$-\alpha^k(y_0-\beta) \geq \gamma \implies k \geq \log_\alpha\left(\frac{\gamma}{\beta-y_0}\right)$\\
+For $n = 2k+1$:
+$$y_{2k+1} = \beta + (-1)^k\alpha^k(x_0-\beta) \geq \frac{B}{l_0+2} \iff (-1)^k\alpha^k(x_0-\beta) \geq \gamma$$
+(1.3) If $x_0 > \beta$ and $k$ is even: 
+$k \geq \log_\alpha\left(\frac{\gamma}{x_0-\beta}\right)$\\
+(1.4) If $x_0 < \beta$ and $k$ is odd: 
+$k \geq \log_\alpha\left(\frac{\gamma}{\beta-x_0}\right)$
+
+\subsubsection{Three stages, case study}
+For $l_0=2, l_1=3, B=1200$. The fixed point is $[100,100,100]$. For $[x_0,y_0,z_0]$, if is no eviction for stage $1,2$(all stages are $0,1,2$), then:
+$$[x_{n}, y_n, z_n]\overset{B}{\implies}  [0 ,x_n ,y_n]\overset{A/E}{\implies}  [ \frac{B-4x_n-5y_n}{3},x_n ,y_n ]$$
+The same as before, we can compute the explicit solution. When first make eviction for stage $1$ at time $n+1$, that is:
+$$[x_n, y_n, z_n]\overset{B}{\implies}  [0 ,x_n ,y_n]\overset{A/E}{\implies}  [ 0,\frac{B-5y_n}{4} ,y_n ]=[x_{n+1}, y_{n+1}, z_{n+1}]$$ 
+Compute further:
+\begin{align*}
+&[x_n, y_n, z_n]\overset{B}{\implies}  [0 ,x_n ,y_n]\overset{A/E}{\implies}  \textcolor{blue}{[ 0,\frac{B-5y_n}{4} ,y_n ]}=[0, y_{n+1}, z_{n+1}]\overset{B}{\implies}[0,0,y_{n+1}]\\
+\overset{A/E}{\implies} & \textcolor{blue}{[\frac{B-5y_{n+1}}{3},0,y_{n+1}]}=[x_{n+2},0,z_{n+2}]\overset{B}{\implies} [0, x_{n+2}, 0]\overset{A/E}{\implies}  \textcolor{blue}{[\frac{B-4x_{n+2}}{3} ,x_{n+2},0]}=[x_{n+3},y_{n+3},0]\\
+\overset{B}{\implies}& [0,\frac{B-4x_{n+2}}{3} ,x_{n+2}]\overset{A/E}{\implies}[0,\frac{B-5x_{n+2}}{4} ,x_{n+2}]=\textcolor{blue}{[0,\frac{B-5y_{n+3}}{4} ,y_{n+3}]}=[0,y_{n+4},z_{n+4}]
+\end{align*}
+In this iteration, next is to check when $z_{n^*}\geq B/5$. Then get to limit cycle. This comes from:
+\begin{align*}
+X_{n+1}&=[ 0,\frac{B-5y_n}{4} ,y_n ]\\
+X_{n+2}&=[\frac{25y_n-B}{12}, 0, \frac{B-5y_n}{4}]\\
+X_{n+3}&=[\frac{4B-25y_n}{9}, \frac{25y_n-B}{12}, 0]\\
+X_{n+4}&=[0, \frac{17B-125y_n}{48}, \frac{25y_n-B}{12}]
+\end{align*}
+This can also be written to matrix form.
+
+We need to track $\frac{25y_n-B}{12} \geq B/4$ or $\frac{4B-25y_n}{9}\geq B/5$.
+
+\subsubsection{single type, general}
+Consider general $l_0, l_1, B$. The lengths are $l_0+1 \to l_0+l_1$. The satges are $0\to l_1-1$. The eviction levels are also $0\to l_1-1$. For eviction level $i$, the $l_1$-tuple variable has $i$ zero term.
+
+For eviction level $i=0$, the fixed point is:
+$$x\cdot\sum_{i=0}^{l_1-1}(l_0+i+1) = B \implies x^* = \frac{2B}{(2l_0+l_1+2)l_1}\implies [x^*, \cdots, x^*] $$
+For eviction level $i=1$, the cycle first enters:
+$$[0,\frac{B-\sum_{i=2}^{l_1-1}(l_0+i+1)\cdot x^{(i)}_{n}}{l_0+2},x^{(2)}_{n},x^{(3)}_{n}, \cdots, x^{(l_1-1)}_{n}]=[0,x_{n+1}^{(1)},\cdots,x_{n+1}^{(l_1-1)}]$$
+Consider the matrix form, for the first step in the $l_1$-cycle, we note that
+\begin{align*}
+    &
+   \begin{bmatrix}
+   0 & -\frac{l_0+3}{l_0+1}&\cdots & -\frac{l_0+l_1}{l_0+1}& 0\\
+   1 & 0&\cdots & 0& 0\\
+   0 & 1&\cdots & 0& 0\\
+   \vdots & \vdots& & \vdots& \vdots\\
+   0 & 0&\cdots &1 & 0\\
+   \end{bmatrix} 
+   X_{n}=\begin{bmatrix}
+   0 & -\frac{l_0+3}{l_0+1}&\cdots & -\frac{l_0+l_1}{l_0+1}& 0\\
+   1 & 0&\cdots & 0& 0\\
+   0 & 1&\cdots & 0& 0\\
+   \vdots & \vdots& & \vdots& \vdots\\
+   0 & 0&\cdots &1 & 0\\
+   \end{bmatrix} 
+   \begin{bmatrix}
+    0\\
+    x_{n+1}^{(1)}\\
+    \vdots\\
+    x_{n+1}^{(l_1-2)}\\
+    x_{n+1}^{(l_1-1)}
+   \end{bmatrix}\\
+=& \begin{bmatrix}
+    -\frac{ \sum_{i=1}^{l_1-2}(l_0+2+i)x_{n+1}^{(i)} }{l_0+1}&
+    0&
+    x_{n+1}^{(1)}&
+    \cdots&
+    x_{n+1}^{(l_1-2)}
+   \end{bmatrix}^{\top}
+\end{align*}
+So we have that 
+\begin{align*}
+&\begin{bmatrix}
+    \frac{B}{l_0+1}\\
+    0\\
+    \vdots\\
+    0\\
+    0
+   \end{bmatrix}+\begin{bmatrix}
+   0 & -\frac{l_0+3}{l_0+1}&\cdots & -\frac{l_0+l_1}{l_0+1}& 0\\
+   1 & 0&\cdots & 0& 0\\
+   0 & 1&\cdots & 0& 0\\
+   \vdots & \vdots& & \vdots& \vdots\\
+   0 & 0&\cdots &1 & 0\\
+   \end{bmatrix} 
+   \begin{bmatrix}
+    0\\
+    x_{n+1}^{(1)}\\
+    \vdots\\
+    x_{n+1}^{(l_1-2)}\\
+    x_{n+1}^{(l_1-1)}
+   \end{bmatrix}\\
+   =&\begin{bmatrix}
+    \frac{B- \sum_{i=1}^{l_1-2}(l_0+2+i)x_{n+1}^{(i)} }{l_0+1}&
+    0&
+    x_{n+1}^{(1)}&
+    \cdots&
+    x_{n+1}^{(l_1-2)}
+   \end{bmatrix}^{\top}=X_{n+2}
+\end{align*}
+We can define
+$$\mathbf{b}=\begin{bmatrix}
+    \frac{B}{l_0+1}\\
+    0\\
+    \vdots\\
+    0\\
+    0
+   \end{bmatrix}, \mathbf{A}_1=\begin{bmatrix}
+   0 & -\frac{l_0+3}{l_0+1}&\cdots & -\frac{l_0+l_1}{l_0+1}& 0\\
+   1 & 0&\cdots & 0& 0\\
+   0 & 1&\cdots & 0& 0\\
+   \vdots & \vdots& & \vdots& \vdots\\
+   0 & 0&\cdots &1 & 0\\
+   \end{bmatrix} = \begin{bmatrix}\alpha_{1}^{\top}&0\\
+I_{l_1-1}&0\end{bmatrix}$$
+\textcolor{red}{We can write it to homogeneous form. The number of increment tokens is $\sum_{i=1}^{l_1-2}X_{n+1}^{(i)}$, and the number of completed token is $(l_0+l_1)x_{n+1}^{(l_1-1)}$, so the number of admission tokens is exactly $(l_0+l_1)x_{n+1}^{(l_1-1)}-\sum_{i=1}^{l_1-2}X_{n+1}^{(i)}$. So the matrix form is, and this matrix is general for $i=1,\cdots, l_1-1$. 
+$$ \mathbf{B}_1 = \begin{bmatrix}
+\frac{-1}{l_0+1}\cdot \mathbb{1}_{l_1-1}^\top & \frac{l_0+l_1}{l_0+1}\\
+I_{l_1-1}& \mathbf{0}
+\end{bmatrix}, \; X_{n+i+1}=\mathbf{B}_1X_{n+i}, i=1,\cdots,l_1-1$$}
+
+And we have $X_{n+2}=\mathbf{A}_1 X_{n+1}+\mathbf{b}$. With the help of this, we can write the followings. For $X_{n+2}\to X_{n+3}$, this is:
+\begin{align*}
+&\begin{bmatrix}
+\frac{B- \sum_{i=1}^{l_1-2}(l_0+2+i)x_{n+1}^{(i)} }{l_0+1}&
+0&
+x_{n+1}^{(1)}&
+\cdots&
+x_{n+1}^{(l_1-2)}
+\end{bmatrix}^{\top}=X_{n+2}=\begin{bmatrix}x_{n+2}^{(0)}&0&x_{n+2}^{(2)}&\cdots&x_{n+2}^{(l_1-1)}\end{bmatrix}^\top\\
+\to & \begin{bmatrix}
+\frac{B- \sum_{i=0, i\neq 1}^{l_1-2}(l_0+2+i)x_{n+2}^{(i)} }{l_0+1}& x_{n+2}^{(0)}&
+0&
+x_{n+2}^{(2)}&
+\cdots&
+x_{n+2}^{(l_1-2)}
+\end{bmatrix}^{\top}=X_{n+3}\\
+\iff &X_{n+3}=\mathbf{A}_2 X_{n+2} +\mathbf{b};\;\mathbf{A}_2 = \begin{bmatrix}\alpha_{2}^{\top}&0\\
+I_{l_1-1}&0\end{bmatrix}, \; \alpha_{2}^{\top}=
+\begin{bmatrix}
+    -\frac{l_0+2}{l_0+1}&0& -\frac{l_0+4}{l_0+1}&\cdots & -\frac{l_0+l_1}{l_0+1}
+\end{bmatrix}
+\end{align*}
+We can summarize that:
+\begin{align*}
+&X_{n+2}=\mathbf{A}_1 X_{n+1} +\mathbf{b},\;X_{n+3}=\mathbf{A}_2 X_{n+2} +\mathbf{b},\; \cdots ,\;X_{n+l_1}=\mathbf{A}_{l_1-1} X_{n+l_1-1} +\mathbf{b}\\
+\implies& X_{n+i+1}=\mathbf{A}_i X_{n+i} +\mathbf{b}, i=1,\cdots,l_1-1\\
+& \mathbf{A}_i = \begin{bmatrix}\alpha_{i}^{\top}&0\\
+I_{l_1-1}&0\end{bmatrix}, \; \alpha_{i}^{\top}=
+\begin{bmatrix}
+    -\frac{l_0+2}{l_0+1}&-\frac{l_0+3}{l_0+1}& -\frac{l_0+4}{l_0+1}&\cdots & -\frac{l_0+l_1}{l_0+1}
+\end{bmatrix}_{i-\text{th to zero}}
+\end{align*}
+And
+\begin{align*}
+&X_{n+l_1}=\begin{bmatrix}
+x_{n+l_1}^{(0)}&
+x_{n+l_1}^{(1)}&
+\cdots&
+x_{n+l_1}^{(l_1-2)}&0
+\end{bmatrix}^{\top} \\
+\to& \begin{bmatrix}
+0&
+\frac{B- \sum_{i=1}^{l_1-2}(l_0+2+i)x_{n+l_1}^{(i)} }{l_0+2}&
+x_{n+l_1}^{(1)}&
+\cdots&
+x_{n+l_1}^{(l_1-2)}
+\end{bmatrix}^{\top}=X_{n+l_1+1}\\
+\iff&X_{n+l_1+1}=\mathbf{A}_{l_1}+\mathbf{b^\prime}\\
+&\mathbf{A}_{l_1}=\begin{bmatrix}\alpha_{l_1}^{\top}&0\\
+I_{l_1-1}&0\end{bmatrix}, \; \alpha_{l_1}^{\top}=
+\begin{bmatrix}
+    -\frac{l_0+2}{l_0+1}&-\frac{l_0+3}{l_0+1}& -\frac{l_0+4}{l_0+1}&\cdots & -\frac{l_0+l_1}{l_0+1}
+\end{bmatrix}\\
+&\mathbf{b^\prime}=\begin{bmatrix}
+    \frac{B}{l_0+2}&0&\cdots&0
+\end{bmatrix}^{\top}
+\end{align*}
+\textbf{Remark}: seems the explicit form is too hard to compute? Or there is a smarter way. \textcolor{blue}{Maybe compute the solution of $l_1=3$ and $l_1=4$ first?}
+
+\textcolor{red}{We can also write it to homogeneous form. The original is $B=\sum_{i=0}^{l_1-2}(l_0+i+1)x_{n+l_1}^{(i)}$, and the latter is $\sum_{i=1}^{l_1-2}(l_0+i+2)x_{n+l_1}^{(i)}$. So the remaining is $\sum_{i=0}^{l_1-2}(l_0+i+1)x_{n+l_1}^{(i)} - \sum_{i=1}^{l_1-2}(l_0+i+2)x_{n+l_1}^{(i)}= (l_0+1)x_{n+l_1}^{(0)}-\sum_{i=1}^{l_1-2}x_{n+l_1}^{(i)}$, and the length is $l_0+2$ instead of $l_0+1$. So the matrix form is:
+$$\mathbf{B}_2 = \begin{bmatrix}
+0 & 0 & 0 & \cdots & 0 & 0\\
+\frac{l_0+1}{l_0+2} & -\frac{1}{l_0+2} & -\frac{1}{l_0+2} & \cdots & -\frac{1}{l_0+2} & 0\\
+0 & 1 & 0 & \cdots & 0 & 0\\
+0 & 0 & 1 & \cdots & 0 & 0\\
+\vdots & \vdots & & \ddots & \vdots & \vdots\\
+0 & 0 & 0 & \cdots & 1 & 0
+\end{bmatrix}, \; \mathbf{B}_2X_{n+l_1}[1]=\frac{l_0+1}{l_0+2}x_{n+l_1}^{(0)}-\frac{1}{l_0+2}\sum_{i=1}^{l_1-2}x_{n+l_1}^{(i)}$$
+Together with $\mathbf{B}_1$ for the other $l_1-1$ steps, the complete $l_1$-cycle is described by:
+$$ X_{n+l_1+1}=\mathbf{B}_2X_{n+l_1}=\mathbf{B}_2\mathbf{B}_1^{l_1-1}X_{n+1}$$
+This gives a fully homogeneous representation of the dynamics.}
+
+For $l_1=3$, we have:
+\begin{align*}
+&X_{n+1}=\begin{bmatrix} 0&x_{n+1}^{(1)}&x_{n+1}^{(2)}\end{bmatrix}, (l_0+2)x_{n+1}^{(1)}+(l_0+3)x_{n+1}^{(2)}=B\\
+\implies & X_{n+2} = \begin{bmatrix} \frac{B - (l_0+3)x_{n+1}^{(1)}}{l_0+1} & 0 & x_{n+1}^{(1)} \end{bmatrix}\\
+&X_{n+3}=\begin{bmatrix} \frac{(l_0+2)(l_0+3)x_{n+1}^{(1)} - B}{(l_0+1)^2} & \frac{B - (l_0+3)x_{n+1}^{(1)}}{l_0+1} & 0 \end{bmatrix}\\
+&X_{n+4} = \begin{bmatrix}0& \frac{(l_0+3)^2x_{n+1}^{(1)} - 2B}{(l_0+1)(l_0+2)} & \frac{B - (l_0+3)x_{n+1}^{(1)}}{l_0+1} \end{bmatrix}
+\end{align*}
+
+For $l_1=4$, we have:
+\begin{align*}
+&X_{n+1}=\begin{bmatrix} 0&x_{n+1}^{(1)}&x_{n+1}^{(2)}&x_{n+1}^{(3)}\end{bmatrix}, (l_0+2)x_{n+1}^{(1)}+(l_0+3)x_{n+1}^{(2)}+(l_0+3)x_{n+1}^{(3)}=B\\
+\implies & X_{n+2} =\begin{bmatrix} \frac{B-(l_0+3)x_{n+1}^{(1)}-(l_0+4)x_{n+1}^{(2)}}{l_0+1} & 0&x_{n+1}^{(1)}&x_{n+1}^{(2)}\end{bmatrix}\\
+\implies & X_{n+3} =\begin{bmatrix}  \frac{-B +2x_{n+1}^{(1)}+(l_0+2)(l_0+4)x_{n+1}^{(2)} }{(l_0+1)^2} &\frac{B-(l_0+3)x_{n+1}^{(1)}-(l_0+4)x_{n+1}^{(2)}}{l_0+1} & 0&x_{n+1}^{(1)}\end{bmatrix}\\
+\implies & X_{n+4} =\begin{bmatrix}??? & \frac{-B +2x_{n+1}^{(1)}+(l_0+2)(l_0+4)x_{n+1}^{(2)} }{(l_0+1)^2} &\frac{B-(l_0+3)x_{n+1}^{(1)}-(l_0+4)x_{n+1}^{(2)}}{l_0+1} & 0\end{bmatrix}\\
+\implies & X_{n+5} =\begin{bmatrix}0& \Delta& \frac{-B +2x_{n+1}^{(1)}+(l_0+2)(l_0+4)x_{n+1}^{(2)} }{(l_0+1)^2} &\frac{B-(l_0+3)x_{n+1}^{(1)}-(l_0+4)x_{n+1}^{(2)}}{l_0+1}\end{bmatrix}\\
+&\Delta=\frac{-2l_0 B + (l_0+3)[2(l_0+1)(l_0+4) - (l_0+2)(l_0+3)]x_{n+1}^{(1)} - 2(l_0+4)x_{n+1}^{(2)}}{(l_0+2)(l_0+1)^2}\\
+=&\frac{-2l_0 B + (l_0+3)(l_0^2+5l_0+2)x_{n+1}^{(1)} - 2(l_0+4)x_{n+1}^{(2)}}{(l_0+2)(l_0+1)^2}
+\end{align*}
+
+\subsubsection{single type, general, homogeneous form}
+We can write it to homogeneous form. The number of increment tokens is $\sum_{i=1}^{l_1-2}X_{n+1}^{(i)}$, and the number of completed token is $(l_0+l_1)x_{n+1}^{(l_1-1)}$, so the number of admission tokens is exactly $(l_0+l_1)x_{n+1}^{(l_1-1)}-\sum_{i=1}^{l_1-2}X_{n+1}^{(i)}$. So the matrix form is, and this matrix is general for $i=1,\cdots, l_1-1$. 
+$$ \mathbf{B}_1 = \begin{bmatrix}
+\frac{-1}{l_0+1}\cdot \mathbb{1}_{l_1-1}^\top & \frac{l_0+l_1}{l_0+1}\\
+I_{l_1-1}& \mathbf{0}
+\end{bmatrix}, \; X_{n+i+1}=\mathbf{B}_1X_{n+i}, i=1,\cdots,l_1-1$$
+We can also write the last step to homogeneous form. The original is $B=\sum_{i=0}^{l_1-2}(l_0+i+1)x_{n+l_1}^{(i)}$, and the latter is $\sum_{i=1}^{l_1-2}(l_0+i+2)x_{n+l_1}^{(i)}$. So the remaining is $\sum_{i=0}^{l_1-2}(l_0+i+1)x_{n+l_1}^{(i)} - \sum_{i=1}^{l_1-2}(l_0+i+2)x_{n+l_1}^{(i)}= (l_0+1)x_{n+l_1}^{(0)}-\sum_{i=1}^{l_1-2}x_{n+l_1}^{(i)}$, and the length is $l_0+2$ instead of $l_0+1$. So the matrix form is:
+$$\mathbf{B}_2 = \begin{bmatrix}
+0 & 0 & 0 & \cdots & 0 & 0\\
+\frac{l_0+1}{l_0+2} & -\frac{1}{l_0+2} & -\frac{1}{l_0+2} & \cdots & -\frac{1}{l_0+2} & 0\\
+0 & 1 & 0 & \cdots & 0 & 0\\
+0 & 0 & 1 & \cdots & 0 & 0\\
+\vdots & \vdots & & \ddots & \vdots & \vdots\\
+0 & 0 & 0 & \cdots & 1 & 0
+\end{bmatrix}, \; \mathbf{B}_2X_{n+l_1}[1]=\frac{l_0+1}{l_0+2}x_{n+l_1}^{(0)}-\frac{1}{l_0+2}\sum_{i=1}^{l_1-2}x_{n+l_1}^{(i)}$$
+Together with $\mathbf{B}_1$ for the other $l_1-1$ steps, the complete $l_1$-cycle is described by:
+$$ X_{n+l_1+1}=\mathbf{B}_2X_{n+l_1}=\mathbf{B}_2\mathbf{B}_1^{l_1-1}X_{n+1}$$
+What's more, we can observe that:
+$$\mathbf{B}_2 = \begin{bmatrix}
+0 & 0 & 0 & \cdots & 0 & 0\\
+\frac{l_0+1}{l_0+2} & -\frac{1}{l_0+2} & -\frac{1}{l_0+2} & \cdots & -\frac{1}{l_0+2} & 0\\
+0 & 1 & 0 & \cdots & 0 & 0\\
+0 & 0 & 1 & \cdots & 0 & 0\\
+\vdots & \vdots & & \ddots & \vdots & \vdots\\
+0 & 0 & 0 & \cdots & 1 & 0
+\end{bmatrix}=\begin{bmatrix}
+    \mathbf{0}^\top & 0\\
+    I_{l_1-1} - \frac{1}{l_0+2} e_{1}\mathbb{1}_{l_1-1}^\top& \mathbf{0}
+\end{bmatrix} $$
+
+% \input{the_product.tex}
+
+\subsubsection{Engine value: one}
+\textcolor{red}{For $P=B_2B_1^{l_1-1}$, this matrix has an engine value as $1$, and the corresponding engine vector is $[0,2,1,\cdots,1]$, for all $l_0\geq 1$ and for all $3\leq l_1$.} This is because ($\mathbf{x_i}=B_1^{i}\mathbf{x_0}$):
+\begin{align*}
+&\mathbf{x_0}=[0,2,1,\cdots,1]\overset{B_1}{\implies}\mathbf{x_1}=[1,0,2,1,\cdots,1]\overset{B_1}{\implies}\cdots \overset{B_1}{\implies} \mathbf{x_{l_1-2}}=[1,\cdots,1,0,2]\\
+\overset{B_1}{\implies}&\mathbf{x_{l_1-1}}=[\frac{l_1+2l_0+2}{l_0+1},1,\cdots,1,0]\overset{B_2}{\implies}[0,2,1,\cdots,1]=\mathbf{x_0}
+\end{align*}
+\textcolor{blue}{$[0,2,1,\cdots,1]$ represents the fixed point(cycle) condition. The left is the monotonicity.}
+
+\subsubsection{General eviction level, Engine value: one}
+For fixed $l_1$, the eviction level is $0\leq i\leq l_1-1$. We have discussed the eviction level $i=1$. Fix integers $l_0,l_1$, \textcolor{red}{$i$} and set
+\[
+m:=l_1,\qquad 
+\alpha:=-\frac{1}{l_0+1},\quad 
+\beta:=\frac{l_0+l_1}{l_0+1},\quad
+\theta:=1+\alpha=\frac{l_0}{l_0+1}.
+\]
+Consider the matrices
+$$
+\mathbf{B}_1=
+\begin{bmatrix}
+\alpha&\alpha&\cdots&\alpha&\beta\\
+1&0&\cdots&0&0\\
+0&1&\cdots&0&0\\
+\vdots&\vdots&\ddots&\vdots&\vdots\\
+0&0&\cdots&1&0
+\end{bmatrix}\in\mathbb{R}^{m\times m}
+$$
+And
+\begin{align*}
+&\mathbf{B}_2^{(1)} =\begin{bmatrix}
+    \mathbf{0}^\top & 0\\
+    I_{m-1} - \frac{1}{l_0+2} e_{1}\mathbb{1}_{m-1} ^\top& \mathbf{0}
+\end{bmatrix}\in\mathbb{R}^{m\times m},\; \mathbf{B}_2^{(2)} =\begin{bmatrix}
+    \mathbf{0}^\top & 0\\
+    I_{m-1} - \frac{1}{l_0+3} e_{2}\mathbb{1}_{m-1} ^\top& \mathbf{0}
+\end{bmatrix}\in\mathbb{R}^{m\times m}\\
+&e_1=\begin{bmatrix}
+    1 & 0 &0&\cdots &0
+\end{bmatrix},\; e_2=\begin{bmatrix}
+    0 & 1&0 &\cdots &0
+\end{bmatrix}
+\end{align*}
+\textcolor{red}{
+We have:    
+$$\mathbf{B}_2^{(i)} =\begin{bmatrix}
+    \mathbf{0}^\top & 0\\
+    I_{m-1} - \frac{1}{l_0+i+1} e_{i}\mathbb{1}_{m-1} ^\top& \mathbf{0}
+\end{bmatrix}\in\mathbb{R}^{m\times m}, 1\leq i\leq l_1-1=m-1$$
+We can prove that, for the general matrix $P^{(i)}=\mathbf{B}_2^{(i)}\cdots\mathbf{B}_2^{(2)}\mathbf{B}_2^{(1)}\mathbf{B}_1^{l_1-i}$, this matrix has an engine value as $1$, and the corresponding engine vector is 
+$$[\underbrace{0,\cdots,0}_{\text{index }0\to i-1},\underbrace{1+i}_{\text{index }i},\underbrace{1,\cdots,1}_{\text{index }i+1\to l_1-1}]$$}
+The proof is:
+\begin{align*}
+&\mathbf{x_0}=[0,\cdots,0,1+i,1,\cdots,1]\overset{B_1^{\textcolor{red}{l_1-i-1}}}{\implies}\mathbf{x_{l_1-i-1}}=[1,\cdots,1,0,\cdots,0,1+i]\overset{B_1}{\implies}[\Delta_{l_1-i},1,\cdots,1,0,\cdots,0]\\
+\overset{B_2^{(1)}}{\implies}&\underbrace{[0,\Delta_{l_1-i+1},1,\cdots,1,0,\cdots,0]\overset{B_2^{(2)}}{\implies}\cdots\overset{B_2^{(i)}}{\implies}}_{\text{no admission, only eviction, so the ultimate will be the same, since B bound}}[0,\cdots,0,1+i,1,\cdots,1]
+\end{align*}
+
+\textcolor{blue}{We use $x$ to represent the non zero term, we have that:
+\begin{align*}
+[0,x,x,x,x]&\implies B_2^{(1)}B_1^{4}\implies [0,2,1,1,1]\\
+[0,0,x,x,x]&\implies B_2^{(2)}B_2^{(1)}B_1^{3}\implies [0,0,3,1,1]\\
+[0,x,0,x,x]&\implies B_2^{(1)}B_1B_2^{(1)}B_1^{2}\implies [0,2,0,2,1]\\
+[0,x,0,0,x]&\implies B_2^{(1)}B_1B_2^{(2)}B_2^{(1)}B_1\implies [0,2,0,0,3]
+\end{align*} }
+
+\subsubsection{Why collapse to next eviction level}
+Next we consider the dynamics. At first, the state is $X(0)=[x^{(0)}_{0},\cdots,x^{(l_1-1)}_{0}]$, and there is no eviction, so the mapping is to 
+$$X(1)=[\frac{(l_0+l_1)x_{0}^{(l_1-1)}-\sum_{i=1}^{l_1-2}x_{0}^{(i)}}{l_0+1},x^{(1)}_{0},\cdots,x^{(l_1-2)}_{0}]$$
+this is exactly ($\mathbf{B}_1$ is defined before):
+$$X(n+1)=\mathbf{B}_1X(n)$$
+if the batch capacity is $B$, and since the corresponding engine vector of $1$ is $\mathbb{1}$. We know that the fixed point at eviction level $i=0$(no eviction) is $\mathbf{X}=\frac{B}{\sum_{i=0}^{l_1-1}(l_0+i+1)}\cdot \mathbb{1}\implies \mathbf{B}_1\mathbf{X}=\mathbf{X}$. But if the initial point $X(0)\neq \mathbf{X}$, \textcolor{red}{we expect that the system will go the eviction level $i=1$}. And then, the fixed point(cycle) of eviction level $i=1$ has been computed. Since the the corresponding engine vector of $1$ of matrix $\mathbf{P}^{(1)}=\mathbf{B}_2^{(1)}\mathbf{B}_1^{l_1-1}$ is $[0,2,1,\cdots,1]$, the fixed cycle start at $[0,2,1,\cdots,1]\cdot \frac{B}{2(l_0+2)+\sum_{i=2}^{l_1-1}(l_0+i+1)}$. And is the initial point(from eviction level $i=0$, enter eviction level $i=1$) is not in this cycle, it will go in deeper level of eviction.
+
+So what we want to prove is that, if the entrance is not in the fixed point, it will go to deeper level of eviction. \textcolor{blue}{I think we should consider the eigenvalues, if is not $0$ and $1$, empirical study tells that $\lambda = a+bi, a>1, \norm{\lambda}>1$.}
+
+Consider the eviction level $i=1$, $P=B_2^{(1)}B_1^{l1-1}$, the $[0,2,1,\cdots,1]$. For initial $x=[0,x^{(1)},\cdots,x^{(l_1-1)}]$. The next admission is (after $l_1$ steps, this is on the last index)
+$$\frac{(l_0+l_1)x^{(l_1-1)} -\sum_{i=1}^{l_1-2}x^{(i)} }{l_0+1}$$
+The total count is $N=\sum_{i=1}^{l_1-1}x^{(i)}$, so for stable $[0,2,1,\cdots,1]$, the last is $\frac{N}{l_1}$. We want to compare:
+\begin{align*}
+&\frac{(l_0+l_1)x^{(l_1-1)} -\sum_{i=1}^{l_1-2}x^{(i)} }{l_0+1} - x^{(l_1-1)} = \frac{1}{l_0+1}[(l_0+l_1)x^{(l_1-1)} -\sum_{i=1}^{l_1-2}x^{(i)} -(l_0+1) x^{(l_1-1)}]\\
+=& \frac{1}{l_0+1}[l_1 x^{(l_1-1)} - N]=\frac{l_1}{l_0+1}[x^{(l_1-1)} - \frac{N}{l_1}]
+\end{align*}
+So
+\begin{align*}
+    \text{New admission}=x^{(l_1-1)} +\frac{l_1}{l_0+1}[x^{(l_1-1)} - \frac{N}{l_1}]
+\end{align*}
+% This means that, the monotonicity of last index is the same to the first comparison.
+\textcolor{blue}{Since $N=\sum_{i=0}^{l_1-1}$ is changing, we no idea that how $N$ changes.}
+
+\subsubsection{Proof of the collapse}
+For fixed $l_1$, the eviction level is $0\leq i\leq l_1-1$. We have discussed the eviction level $i=1$. Fix integers $l_0,l_1$, $i$ and set
+$$m:=l_1,\qquad 
+\alpha:=-\frac{1}{l_0+1},\quad 
+\beta:=\frac{l_0+l_1}{l_0+1},\quad
+\theta:=1+\alpha=\frac{l_0}{l_0+1}.$$
+Consider the matrices
+\begin{align}
+\mathbf{B}_1=
+\begin{bmatrix}
+\alpha&\alpha&\cdots&\alpha&\beta\\
+1&0&\cdots&0&0\\
+0&1&\cdots&0&0\\
+\vdots&\vdots&\ddots&\vdots&\vdots\\
+0&0&\cdots&1&0
+\end{bmatrix}\in\mathbb{R}^{m\times m}\label{matrix:single_type_no_eviction}
+\end{align}
+And 
+$$\mathbf{B}_2^{(i)} =\begin{bmatrix}
+    \mathbf{0}^\top & 0\\
+    I_{m-1} - \frac{1}{l_0+i+1} e_{i}\mathbb{1}_{m-1} ^\top& \mathbf{0}
+\end{bmatrix}\in\mathbb{R}^{m\times m}, 1\leq i\leq l_1-1=m-1$$
+\textcolor{blue}{We have that: 
+$$w = [l_0+1,\cdots,l_0+l_1]^{\top}$$
+is the corresponding engine vector of left engine value $1$, representing the $B$ bound.}
+
+For each type of cycle, we use $x$ to represent the non-zero term, we have three kinds of representations. The first is the cycle like $[0,x,x,x,x], [0,x,0,x,x], [0,x,0,0,x]$. The second is the corresponding matrix $P$, and the third is then corresponding engine vector of right engine value $1$ of $P$. We know that (example, $l_1=5$)
+\begin{align*}
+[0,x,x,x,x] &\iff P = B_2^{(1)}B_1^{4} \iff \lambda_{P,1}=[0,2,1,1,1]\\
+[0,x,0,x,x] &\iff P = B_2^{(1)}B_1^{1}B_2^{(1)}B_1^{2} \iff \lambda_{P,1}=[0,2,0,2,1]\\
+[0,x,0,0,x] &\iff P = B_2^{(1)}B_1^{1}B_2^{(2)}B_2^{(1)}B_1^{1} \iff \lambda_{P,1}=[0,2,0,0,3]
+\end{align*}
+For $B_1$, the the number of engine value $1$ is one, the corresponding engine vector is $[1,\cdots,1]$.
+
+For $B_2^{(i)}$, the number of engine value $0$ is $i+1$, but the engine vector is only one independet $[0,\cdots,0,0]$. This means that for $B_2^{(i)}$, the dim of space for engine value $0$ is only $0$.
+
+For $P$, the number of engine value $0$ is $l_1$ minus the number of non-zero term in the cycle $l_1-i=m-i$ ($i$ is the level of eviction), the dim of space for engine value $0$ is also $m-i$. And the number of engine value $1$ is one for $P$, the pattern is clear. What's more, I find that (from empirical), the corresponding engine vector of $0$ of $P$ is not stable (for example $X$), since $B_1X$ sometimes makes collapse.
+
+\textbf{A case study}: For the cycle $[0,x,\cdots,x]$, which is clearly
+$$X_0=[0, x_0^{(1)},\cdots,x_0^{(l_1-1)}]$$
+the next step admission will get to the last stage after $l_1$ steps. So we want to compare this admission to the original counterpart $x_0^{(l_1-1)}$:
+\begin{align*}
+&\frac{(l_0+l_1)x^{(l_1-1)} -\sum_{i=1}^{l_1-2}x^{(i)} }{l_0+1} - x^{(l_1-1)} = \frac{1}{l_0+1}[(l_0+l_1)x^{(l_1-1)} -\sum_{i=1}^{l_1-2}x^{(i)} -(l_0+1) x^{(l_1-1)}]\\
+=& \frac{1}{l_0+1}[l_1 x^{(l_1-1)} - N]=\frac{l_1}{l_0+1}[x^{(l_1-1)} - \frac{N}{l_1}]
+\end{align*}
+If we use $N_i = \mathbb{1}^\top X_i$, then 
+\begin{align*}
+N_1-N_0=\mathbb{1}^\top(B_1-I)X_0=\frac{(l_0+l_1)x^{(l_1-1)} -\sum_{i=1}^{l_1-2}x^{(i)} }{l_0+1} - x^{(l_1-1)}=\frac{l_1}{l_0+1}[x^{(l_1-1)} - \frac{N_0}{l_1}]
+\end{align*}
+Similarly we have:
+\begin{align*}
+N_1-N_0&=\mathbb{1}^\top(B_1-I)X_0 = \frac{l_1}{l_0+1}[x_{0}^{(l_1-1)} - \frac{N_0}{l_1}]\\
+N_2-N_1&=\mathbb{1}^\top(B_1^2-B_1)X_0 = \frac{l_1}{l_0+1}[\textcolor{red}{x_{1}^{(l_1-1)}} - \frac{N_1}{l_1}]=\frac{l_1}{l_0+1}[\textcolor{red}{x_{0}^{(l_1-2)} }- \frac{N_1}{l_1}]\\
+\cdots&\\
+N_{l_1-2}-N_{l_1-3}&=\mathbb{1}^\top(B_1^{l_1-2}-B_1^{l_1-3})X_0 = \frac{l_1}{l_0+1}[\textcolor{red}{x_{0}^{(2)} }- \frac{N_{l_1-3}}{l_1}]\\
+\textcolor{blue}{N_{l_1}-N_{l_1-2}}&=\textcolor{blue}{\mathbb{1}^\top(B_2^{(1)}B_1^{l_1-1}-B_1^{l_1-2})X_0 = \frac{l_1}{\textcolor{red}{l_0+2}}[\textcolor{red}{x_{0}^{(1)} }- \textcolor{red}{2\cdot}\frac{N_{l_1-2}}{l_1}]}
+\end{align*}
+We want to compute the $N_{l_1}-N_{0}$, and we expect that it's sign is based on sign of $x_0^{l_1-1}-\frac{N_0}{l_1}$. Directly adding up gives the:
+\begin{align*}
+N_{l_1}-N_0 = \mathbb{1}^\top(P-I)X_0 = \frac{l_1}{l_0+1}[N_0-x_{0}^{(1)} - \frac{\sum_{i=0}^{l_1-3} N_i}{l_1}]+\frac{l_1}{\textcolor{red}{l_0+2}}[\textcolor{red}{x_{0}^{(1)} }- \textcolor{red}{2\cdot}\frac{N_{l_1-2}}{l_1}]
+\end{align*}
+The term $N_i, 1\leq i\leq l_1-2$ is not clear. Another approach is that:
+\begin{align*}
+N_1&=\frac{1}{l_0+1}[l_1 x_{0}^{(l_1-1)} + l_0 N_0]\\
+N_2& = \frac{1}{l_0+1}[l_1 x_{0}^{(l_1-2)} + l_0 N_1]\\
+\cdots&\\
+N_{l_1-2}&= \frac{1}{l_0+1}[l_1 x_{0}^{(2)} + l_0 N_{l_1-3}]\\
+\textcolor{blue}{N_{l_1}}&\textcolor{blue}{= \frac{1}{\textcolor{red}{l_0+2}}[l_1\textcolor{red}{x_{0}^{(1)} }+ l_0 N_{l_1-2}]}
+\end{align*}
+which is:
+\begin{align*}
+\begin{bmatrix}
+-l_0 & l_0+1 & 0 & 0 & \cdots & 0 & 0 & 0\\
+0 & -l_0 & l_0+1 & 0 & \cdots & 0 & 0 & 0\\
+0 & 0 & -l_0 & l_0+1 & \cdots & 0 & 0 & 0\\
+\vdots & \vdots & \vdots & \ddots & \ddots & \vdots & \vdots & \vdots\\
+0 & 0 & 0 & 0 & \cdots & -l_0 & l_0+1 & 0\\
+0 & 0 & 0 & 0 & \cdots & 0 & -l_0 & l_0+2
+\end{bmatrix}
+\begin{bmatrix}
+N_0\\
+N_1\\
+N_2\\
+\vdots\\
+N_{l_1-2}\\
+N_{l_1}
+\end{bmatrix}
+= l_1 \begin{bmatrix}
+x_{0}^{(l_1-1)}\\
+x_{0}^{(l_1-2)}\\
+\vdots\\
+x_{0}^{(2)}\\
+x_{0}^{(1)}
+\end{bmatrix}
+\end{align*}
+Here the matrix:
+$$H = \left[\begin{array}{ccccccc@{\hspace{0.3em}\vrule width 1pt\hspace{0.3em}}c}
+-l_0 & l_0+1 & 0 & 0 & \cdots & 0 & 0 & 0\\
+0 & -l_0 & l_0+1 & 0 & \cdots & 0 & 0 & 0\\
+0 & 0 & -l_0 & l_0+1 & \cdots & 0 & 0 & 0\\
+\vdots & \vdots & \vdots & \ddots & \ddots & \vdots & \vdots & \vdots\\
+0 & 0 & 0 & 0 & \cdots & -l_0 & l_0+1 & 0\\
+0 & 0 & 0 & 0 & \cdots & 0 & -l_0 & l_0+2
+\end{array}\right] \in \mathbb{R}^{(l_1-1)\times l_1}$$
+Or ($N_0$ is not variable):
+\begin{align*}
+\begin{bmatrix}
+l_0+1 & 0 & 0 & \cdots & 0 & 0 & 0\\
+-l_0 & l_0+1 & 0 & \cdots & 0 & 0 & 0\\
+0 & -l_0 & l_0+1 & \cdots & 0 & 0 & 0\\
+\vdots & \vdots & \ddots & \ddots & \vdots & \vdots & \vdots\\
+0 & 0 & 0 & \cdots & -l_0 & l_0+1 & 0\\
+0 & 0 & 0 & \cdots & 0 & -l_0 & l_0+2
+\end{bmatrix}
+\begin{bmatrix}
+N_1\\
+N_2\\
+\vdots\\
+N_{l_1-2}\\
+N_{l_1}
+\end{bmatrix}
+= \begin{bmatrix}
+l_1x_{0}^{(l_1-1)}+l_0 N_0\\
+l_1x_{0}^{(l_1-2)}\\
+\vdots\\
+l_1x_{0}^{(2)}\\
+l_1x_{0}^{(1)}
+\end{bmatrix}
+\end{align*}
+We get that:
+\begin{align*}
+N_k = \left(\frac{l_0}{l_0+1}\right)^k N_0 + \frac{l_1}{l_0+1} \sum_{j=1}^{k} \left(\frac{l_0}{l_0+1}\right)^{k-j} x_0^{(l_1-j)}, 1\leq k \leq l_1-2
+\end{align*}
+and:
+$$N_{l_1} = \frac{l_0}{l_0+2}\left(\frac{l_0}{l_0+1}\right)^{l_1-2} N_0 + \frac{l_1 x_0^{(1)}}{l_0+2} + \frac{l_0 l_1}{(l_0+2)(l_0+1)} \sum_{j=1}^{l_1-2} \left(\frac{l_0}{l_0+1}\right)^{l_1-2-j} x_0^{(l_1-j)}$$
+So consider our goal $N_{l_1}-N_0$:
+\begin{align*}
+&N_{l_1} - N_0 \\
+=& \frac{l_0}{l_0+2}\left(\frac{l_0}{l_0+1}\right)^{l_1-2} N_0 + \frac{l_1 x_0^{(1)}}{l_0+2} + \frac{l_0 l_1}{(l_0+2)(l_0+1)} \sum_{j=1}^{l_1-2} \left(\frac{l_0}{l_0+1}\right)^{l_1-2-j} x_0^{(l_1-j)} - N_0
+\end{align*}
+Or we consider the $N_i-N_0$ as variables:
+$$\begin{bmatrix}
+l_0+1 & 0 & 0 & \cdots & 0 & 0 & 0\\
+-l_0 & l_0+1 & 0 & \cdots & 0 & 0 & 0\\
+0 & -l_0 & l_0+1 & \cdots & 0 & 0 & 0\\
+\vdots & \vdots & \ddots & \ddots & \vdots & \vdots & \vdots\\
+0 & 0 & 0 & \cdots & -l_0 & l_0+1 & 0\\
+0 & 0 & 0 & \cdots & 0 & -l_0 & l_0+2
+\end{bmatrix}\begin{bmatrix}
+N_1 - N_0\\
+N_2 - N_0\\
+N_3 - N_0\\
+\vdots\\
+N_{l_1-2} - N_0\\
+N_{l_1} - N_0
+\end{bmatrix}=\begin{bmatrix}
+l_1 x_0^{(l_1-1)} - N_0\\
+l_1 x_0^{(l_1-2)} - N_0\\
+l_1 x_0^{(l_1-3)} - N_0\\
+\vdots\\
+l_1 x_0^{(2)} - N_0\\
+l_1 x_0^{(1)} - 2N_0
+\end{bmatrix} = \textcolor{red}{l_1(X_0 - \frac{N_0}{l_1 }\lambda)[l_1:1] }$$
+We have: ($1\leq k\leq l_1-2$), the same as before
+\begin{align*}
+\Delta_k &= N_{k} - N_0\\
+&=\sum_{j=1}^{k} \left(\frac{l_0}{l_0+1}\right)^{k-j} \frac{l_1 x_0^{(l_1-j)} - N_0}{l_0+1}\\
+&=\frac{1}{l_0+1}\sum_{j=1}^{k} \left(\frac{l_0}{l_0+1}\right)^{k-j} l_1 x_0^{(l_1-j)} - \frac{N_0}{l_0+1}\sum_{j=1}^{k} \left(\frac{l_0}{l_0+1}\right)^{k-j}\\
+&=\frac{1}{l_0+1}\sum_{j=1}^{k} \left(\frac{l_0}{l_0+1}\right)^{k-j} l_1 x_0^{(l_1-j)} - N_0\left[1 - \left(\frac{l_0}{l_0+1}\right)^k\right]
+\end{align*}
+and:
+\begin{align*}
+\Delta_{l_1} = \frac{l_0 \Delta_{l_1-2} + l_1 x_0^{(1)} - 2N_0}{l_0+2}
+\end{align*}
+
+\textbf{The Proof}: From the discussions above, we can find that the change in the total number $N_{l_1}-N_0$ is complex and hard to analyze. We have a better approach. We set $G_i = \max_{t}\{x_i^{(t)}/w_t\} - \min_{t}\{x_i^{(t)}/w_t\}$. Recall that:
+\begin{align*}
+N_1-N_0&=\mathbb{1}^\top(B_1-I)X_0 = \frac{l_1}{l_0+1}[x_{0}^{(l_1-1)} - \frac{N_0}{l_1}]\\
+N_2-N_1&=\mathbb{1}^\top(B_1^2-B_1)X_0 = \frac{l_1}{l_0+1}[\textcolor{red}{x_{1}^{(l_1-1)}} - \frac{N_1}{l_1}]=\frac{l_1}{l_0+1}[\textcolor{red}{x_{0}^{(l_1-2)} }- \frac{N_1}{l_1}]\\
+\cdots&\\
+N_{l_1-2}-N_{l_1-3}&=\mathbb{1}^\top(B_1^{l_1-2}-B_1^{l_1-3})X_0 = \frac{l_1}{l_0+1}[\textcolor{red}{x_{0}^{(2)} }- \frac{N_{l_1-3}}{l_1}]\\
+\textcolor{blue}{N_{l_1}-N_{l_1-2}}&=\textcolor{blue}{\mathbb{1}^\top(B_2^{(1)}B_1^{l_1-1}-B_1^{l_1-2})X_0 = \frac{l_1}{\textcolor{red}{l_0+2}}[\textcolor{red}{x_{0}^{(1)} }- \textcolor{red}{2\cdot}\frac{N_{l_1-2}}{l_1}]}
+\end{align*}
+the change of the number is based on the comparison of the current value at the last stage and the averaged number multiplied with \textbf{weight $w_t$}. 
+
+(1) $G_n$ is non-decreasing: if $x_n^{(l_1-1)}/w_{l_1-1}\leq   N_n/l_1$, then admission $\leq $ completion (number over weight)
+$$G_{n+1}=\max_{t}\{x_{n+1}^{(t)}/w_t\} - \min_{t}\{x_{n+1}^{(t)}/w_t\}=\max_{t}\{x_{n}^{(t)}/w_t\} - \min_{t}\{x_{n+1}^{(t)}/w_t\}\geq \max_{t}\{x_{n}^{(t)}/w_t\} - \min_{t}\{x_{n}^{(t)}/w_t\}=G_{n}$$
+if $x_n^{(l_1-1)}/w_{l_1-1}>   N_n/l_1$, admission $ > $ completion (number over weight)
+$$G_{n+1}=\max_{t}\{x_{n+1}^{(t)}/w_t\} - \min_{t}\{x_{n+1}^{(t)}/w_t\}=\max_{t}\{x_{n+1}^{(t)}/w_t\} - \min_{t}\{x_{n}^{(t)}/w_t\}\geq \max_{t}\{x_{n}^{(t)}/w_t\} - \min_{t}\{x_{n}^{(t)}/w_t\}=G_{n}$$
+Or clearly speaking, this is because $\max_{t}\{x_{n}^{(t)}/w_t\}$ is non-decreasing and $\min_{t}\{x_{n}^{(t)}/w_t\}$ is non-increasing. So $G_n$ has a constant lower bound: $G_n\geq G_0>0$ (not in the fixed point). $\max_{t}\{x_{n}^{(t)}/w_t\}$ is non-decreasing, but there is an upper bound $B/(l_0+l_1)$, so the limit exists: $A=\lim_{n\to \infty}\max_{t}\{x_{n}^{(t)}/w_t\}$.
+
+(2-1) If is the biggest at the last stage, the increment is (both for $G_n$ and $\max_{t}\{x_{n}^{(t)}/w_t\}$)
+\begin{align*}
+&\frac{l_1}{l_0+w}\left[ x_{\max} - w \frac{N}{l_1} \right] = \frac{1}{l_0+w}\left[ l_1 x_{\max} - w N \right] =  \frac{1}{l_0+w}\left[ (l_1-w) x_{\max} - w \sum \text{other }(l_1-w)\text{ nonzero terms} \right] \\
+=& \frac{l_1-w}{l_0+w}\left[  x_{\max}/w - \underbrace{\text{average}}_{\text{average of left }(l_1-w)\text{ terms}}  \right] = \text{admission} - x_{\max}= \text{admission} - x^{(l_1-1)}= \Delta G
+\end{align*} 
+Notice that this is with the constraint: $\sum_{i=0}^{l_1-1}(l_0+i+1)x^{(i)}\equiv B$. We have that:
+\begin{align*}
+&\frac{l_1}{l_0+w}\left[ x_{\max} - w \frac{N}{l_1} \right] = \frac{1}{l_0+w}\left[ l_1 x_{\max} - w N \right] =  \frac{1}{l_0+w}\left[ (l_1-w) x_{\max} - w \sum \text{other }(l_1-w)\text{ nonzero terms} \right] \\
+=& \frac{l_1-w}{l_0+w}\left[  x_{\max}/w - \underbrace{\text{average}}_{\text{average of left }(l_1-w)\text{ terms}}  \right] \\
+>& \frac{1}{l_0+w}\left[(l_1-w)  x_{\max}/w -(l_1-w-1)  x_{\max}/w - x_{\min} \right]  = \frac{1}{l_0+w}\left[ x_{\max}/w  - x_{\min} \right]  = \frac{1}{l_0+w} G_n \geq \frac{1}{l_0+w} G_0
+\end{align*}
+
+
+(2-2) If there is finite $n$ that the biggest is at the last stage, we prove by contradiction. We find infinite $n$ that $x_n^{(j)}/w\in (A-\epsilon, A)$, rotate till this term is at the last stage, by assumption, this is no the biggest, so both are in $(A-\epsilon, A)$. And we consider the admission:
+\begin{align*}
+&\text{admission} - x^{(l_1-1)} = \frac{1}{l_0+w}(l_1 x^{(l_1-1)} - N) \geq  \frac{1}{l_0+w}(l_1 x^{(l_1-1)} - \left[ (l_1-w)\cdot A + x_{\min} \right]  )\\
+=&\frac{1}{l_0+w}((l_1 -w )\left[ x^{(l_1-1)} - A\right] + wx^{(l_1-1)} - x_{\min}  ) \\
+=& -\frac{l_1 -w}{l_0+w}(x^{(l_1-1)} - A)+ \frac{1}{l_0+w}( wx^{(l_1-1)} - x_{\min}  )\geq -\frac{l_1 -w}{l_0+w}\epsilon+ \frac{1}{l_0+w}( wx^{(l_1-1)} - x_{\min}  )\\
+\geq &  -\frac{l_1 -w}{l_0+w}\epsilon+\frac{1}{l_0+w}( x^{(l_1-1)} - x_{\min}  ) \geq -\frac{l_1 -w}{l_0+w}\epsilon+\frac{1}{l_0+w}( A-\epsilon - x_{\min}  ) 
+\end{align*}
+This term is not bounded by $\epsilon$.
+% \begin{align*}
+% &(\text{admission} - x_{\max})(l_0+w)\\
+% =&l_1 x^{(l_1-1)} - w \left[ x_{\max}+x^{(l_1-1)}+\sum\text{others} \right] + (l_0+w)x^{(l_1-1)}-(l_0+w)x_{\max}\\
+% =&(l_0+l_1) x^{(l_1-1)} -(l_0+2w)x_{\max}  - w \sum\text{others}\\
+% \geq &(l_0+l_1) (x_{\max} - \epsilon) -(l_0+2w)x_{\max}  - w \sum\text{others}\\
+% = &w\left[(l_1-2w)x_{\max}/w - (l_0+l_1)\epsilon/w  -  \sum\text{others, with} (l_1-w-1) \text{terms}\right]\\
+% \geq  & w\left[(l_1-2w)x_{\max}/w - (l_0+l_1)\epsilon/w  -(l_1-w-2)x_{\max}/w -  x_{\min}\right]\\
+% = & w\left[(-w+2)x_{\max}/w - x_{\min}- (l_0+l_1)\epsilon/w  \right]
+% \end{align*}
+
+
+% (3) There is infinite $n$ such that the biggest term over weight is at the last stage: 
+% $$\forall N \in \mathbb{N}_{+}, \exists n\geq N, s.t., \arg \max_{t}\{x_{n}^{(t)}/w_t\} = l_1-1$$
+% $\max_{t}\{x_{n}^{(t)}/w_t\}$ is non-decreasing, but there is an upper bound $B/(l_0+l_1)$, so the limit exists: $A=\lim_{n\to \infty}\max_{t}\{x_{n}^{(t)}/w_t\}$. If there is infinite $n$ such that the biggest term is \textbf{not} at the last stage, for example at $n^*$, is 
+% $$X_{n^*}=[x,x,\cdots, x,\underbrace{x_{n^*}^{(j)}}_{\text{index}=j},x,\cdots,x]$$
+% the former $x_{n^*}^{(t)}/w_t, 0\leq t\leq j-1$ is smaller than $x_{n^*}^{(j)}/w_j$, so at the admission of these terms:
+% $$[x,x,\cdots,\textcolor{red}{\underbrace{x_{{n}^*-1}^{(j-1)}}_{\text{index}=j-1}},x, x,\cdots,\textcolor{blue}{\underbrace{x_{n^*-1}^{(l_1-1)}}_{\text{to be completed}}}] \implies [\textcolor{orange}{\underbrace{x_{n^*}^{(0)}}_{\text{admission}}},x,\cdots, x,\textcolor{red}{\underbrace{x_{n^*}^{(j)}}_{\text{index}=j}},x,\cdots,x]$$
+% We already know that $\textcolor{orange}{x_{n^*}^{(0)}/w_0}\leq \textcolor{red}{x_{n^*}^{(j)}/w_j}$. So if $\textcolor{blue}{x_{n^*-1}^{(l_1-1)}/w_{l_1-1}}\geq \textcolor{red}{x_{n^*-1}^{(j-1)}/w_{j-1}}=\textcolor{red}{x_{n^*}^{(j)}/w_j}$, then $\textcolor{blue}{x_{n^*-1}^{(l_1-1)}/w_{l_1-1}}$ is the biggest, thus the admission $\textcolor{orange}{x_{n^*}^{(0)}/w_0}$ must be strictly even bigger, which is not right: 
+% $$\textcolor{orange}{x_{n^*}^{(0)}/w_0} > \textcolor{blue}{x_{n^*-1}^{(l_1-1)}/w_{l_1-1}} \geq \textcolor{red}{x_{n^*-1}^{(j-1)}/w_{j-1}}=\textcolor{red}{x_{n^*}^{(j)}/w_j} \geq \textcolor{orange}{x_{n^*}^{(0)}/w_0}$$
+% This means that, $\textcolor{red}{x_{n^*-1}^{(j-1)}/w_{j-1}}$ is the biggest at $n^*-1$.
+% $$[x,x,\cdots,\textcolor{red}{\underbrace{x_{{n}^*-1}^{(j-1)}}_{\text{index}=j-1}},x, x,\cdots,\textcolor{blue}{\underbrace{x_{n^*-1}^{(l_1-1)}}_{\text{to be completed}}}] \implies [\textcolor{orange}{\underbrace{x_{n^*}^{(0)}}_{\text{admission}}},x,\cdots, x,\textcolor{red}{\underbrace{x_{n^*}^{(j)}}_{\text{index}=j}},x,\cdots,x]$$
+% So $\textcolor{red}{x_{n^*-j}^{(0)}/w_{0}}$ is the biggest at $n^*-j$.
+
+% And since there is finite $n$, the biggest is at the last stage. So before $\textcolor{red}{x_{n^*}^{(j)}/w_{j}}$ goes to the last stage, there must be a bigger admission.
+
+% So in summary, we obtain that there is infinite $n$ such that $\textcolor{red}{x_{n}^{(0)}/w_{0}}$ is the biggest and during the admission, the completion (last stage) is not the biggest. 
+
+% For example, the admission of the even bigger term is at $n^*+1$, so 
+% $$ [\textcolor{orange}{\underbrace{x_{n^*}^{(0)}}_{\text{admission}}},x,\cdots, x,\textcolor{red}{\underbrace{x_{n^*}^{(j)}}_{\text{index}=j}},x,\cdots,x,\textcolor{blue}{\underbrace{x_{n^*}^{(l_1-1)}}_{\text{to be completed}}}] \implies [\boxed{\textcolor{red}{x_{n^*+1}^{(0)}}}, \textcolor{orange}{x_{n^*+1}^{(1)}}, x,\cdots, x,\textcolor{red}{\underbrace{x_{n^*+1}^{(j+1)}}_{\text{index}=j+1}},x,\cdots,x]$$
+% and both $\boxed{\textcolor{red}{x_{n^*+1}^{(0)}}}$ and $\textcolor{red}{\underbrace{x_{n^*+1}^{(j+1)}}_{\text{index}=j+1}}$ are in $(A-\epsilon, A)$, so the gap should be smaller than $\epsilon$. But
+% \begin{align*}
+% &\boxed{\textcolor{red}{x_{n^*+1}^{(0)}}} - \textcolor{red}{\underbrace{x_{n^*+1}^{(j+1)}}_{\text{index}=j+1}} \\
+% = &\textcolor{blue}{\underbrace{x_{n^*}^{(l_1-1)}}_{\text{to be completed}}} +  \frac{l_1 w}{l_0+ w} \left( \textcolor{blue}{\underbrace{x_{n^*}^{(l_1-1)}}_{\text{to be completed}}}/w -  N_{n^*}/l_1  \right)  - \textcolor{red}{\underbrace{x_{n^*+1}^{(j+1)}}_{\text{index}=j+1}} \\
+% = & \frac{1 }{l_0+ w} \left((l_0+l_1+w) \textcolor{blue}{\underbrace{x_{n^*}^{(l_1-1)}}_{\text{to be completed}}} - w \left[\textcolor{blue}{\underbrace{x_{n^*}^{(l_1-1)}}_{\text{to be completed}}}+ \textcolor{red}{\underbrace{x_{n^*+1}^{(j+1)}}_{\text{index}=j+1}}  + \sum \text{other }(l_1-2)\text{ terms} \right]  \right)  - \textcolor{red}{\underbrace{x_{n^*+1}^{(j+1)}}_{\text{index}=j+1}} \\
+% = & \frac{1 }{l_0+ w} \left((l_0+l_1) \textcolor{blue}{\underbrace{x_{n^*}^{(l_1-1)}}_{\text{to be completed}}} - w \left[\textcolor{red}{\underbrace{x_{n^*+1}^{(j+1)}}_{\text{index}=j+1}}  + \sum \text{other }(l_1-2)\text{ terms} \right]  \right)  - \textcolor{red}{\underbrace{x_{n^*+1}^{(j+1)}}_{\text{index}=j+1}} 
+% \end{align*}
+% And we have that:
+% \begin{align*}
+% \sum \text{other }(l_1-2)\text{ terms} < (l_1-2)\textcolor{red}{\underbrace{x_{n^*+1}^{(j+1)}}_{\text{index}=j+1}}
+% \end{align*}
+% so
+% \begin{align*}
+% \epsilon > \;&\boxed{\textcolor{red}{x_{n^*+1}^{(0)}}} - \textcolor{red}{\underbrace{x_{n^*+1}^{(j+1)}}_{\text{index}=j+1}} \\
+% = & \frac{1 }{l_0+ w} \left((l_0+l_1) \textcolor{blue}{\underbrace{x_{n^*}^{(l_1-1)}}_{\text{to be completed}}} - w \left[\textcolor{red}{\underbrace{x_{n^*+1}^{(j+1)}}_{\text{index}=j+1}}  + \sum \text{other }(l_1-2)\text{ terms} \right]  \right)  - \textcolor{red}{\underbrace{x_{n^*+1}^{(j+1)}}_{\text{index}=j+1}} \\
+% > & \frac{1 }{l_0+ w} \left((l_0+l_1) \textcolor{blue}{\underbrace{x_{n^*}^{(l_1-1)}}_{\text{to be completed}}} - (l_0+wl_1)\textcolor{red}{\underbrace{x_{n^*+1}^{(j+1)}}_{\text{index}=j+1}} \right) \\
+% \geq & \frac{1 }{l_0+ w} \left((l_0+l_1) \textcolor{blue}{\underbrace{x_{n^*}^{(l_1-1)}}_{\text{to be completed}}} - (l_0+wl_1)A \right) \\
+% \end{align*}
