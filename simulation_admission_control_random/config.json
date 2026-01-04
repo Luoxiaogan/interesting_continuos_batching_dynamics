@@ -3,20 +3,22 @@
     "l0": 20,
     "l1": 8,
     "B": 1000,
-    "b0": 10,
+    "b0": 0.9,
     "b1": 0.01,
-    "lambda_rate": 0.1913265306122449,
+    "lambda_rate": 0.44365572315882873,
     "if_float": true,
-    "admission_upper_bound": 5.1020408163265305
+    "admission_upper_bound": 5.1020408163265305,
+    "stochastic": true,
+    "seed": 43
   },
   "initial_state": {
     "X0": [
-      3.061224489795918,
-      3.061224489795918,
+      1.061224489795918,
+      1.061224489795918,
       1.061224489795918,
       3.061224489795918,
       3.061224489795918,
-      3.061224489795918,
+      1.061224489795918,
       3.061224489795918,
       3.061224489795918
     ],
@@ -25,11 +27,11 @@
   "experiment_params": {
     "s_min": 0,
     "s_max": 5,
-    "initial_step": 0.005,
+    "initial_step": 0.01,
     "refine_step": 0.05,
     "refine_threshold": 0.05,
-    "min_steps": 1000,
-    "max_steps": 1000
+    "min_steps": 10000,
+    "max_steps": 10000
   },
   "stability_params": {
     "window_size": 10,

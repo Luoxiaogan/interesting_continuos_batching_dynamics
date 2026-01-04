@@ -26,6 +26,7 @@ ENV/
 
 # Simulation outputs
 simulation_admission_control/output/experiment_*
+simulation_admission_control_random/output/experiment_*
 
 # Claude Code
 .claude/plans/
@@ -37,3 +38,5 @@ tmp/*
 # 实验输出和归档（临时输出）
 experiments/output/
 experiments/archive/*/output/
+simulation_admission_control/clear_output.sh
+simulation_admission_control_random/clear_output.sh
