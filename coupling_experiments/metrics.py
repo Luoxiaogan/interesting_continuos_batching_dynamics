@@ -6,6 +6,7 @@ Theory and Simulation trajectories.
 """
 
 from typing import Dict, List, Tuple
+import numpy as np
 
 
 def compute_G(state: Dict, l0: int, l_A: int, l_B: int,
@@ -286,6 +287,76 @@ def compute_G_merged_raw(state: Dict, l0: int, l_A: int, l_B: int,
         return 0.0
 
     return max(merged_values) - min(merged_values)
+
+
+def compute_characteristic_roots(l0: int, l_A: int, l_B: int,
+                                  lambda_A: float, lambda_B: float) -> np.ndarray:
+    """
+    Compute roots of the characteristic equation F(λ) = 0.
+
+    F(λ) = (l_0+1)λ^{l_B-1} + Σ_{m=1}^{l_A-1}(l_0+m+1)λ^{l_B-1-m}
+           + (1-p)Σ_{m=l_A}^{l_B-1}(l_0+m+1)λ^{l_B-1-m}
+
+    Args:
+        l0: Initial/prefill length
+        l_A: Decode length for Type A
+        l_B: Decode length for Type B (l_A < l_B)
+        lambda_A: Arrival rate for Type A
+        lambda_B: Arrival rate for Type B
+
+    Returns:
+        Array of complex roots
+    """
+    p = lambda_A / (lambda_A + lambda_B)
+
+    # Polynomial degree is l_B - 1
+    # Coefficients from highest degree to lowest (for np.roots)
+    coeffs = [0.0] * l_B
+
+    # λ^{l_B-1} coefficient (m=0)
+    coeffs[0] = l0 + 1
+
+    # λ^{l_B-1-m} for m = 1 to l_A-1
+    for m in range(1, l_A):
+        coeffs[m] = l0 + m + 1
+
+    # λ^{l_B-1-m} for m = l_A to l_B-1
+    for m in range(l_A, l_B):
+        coeffs[m] = (1 - p) * (l0 + m + 1)
+
+    return np.roots(coeffs)
+
+
+def compute_limit_roots(l_A: int, l_B: int,
+                        lambda_A: float, lambda_B: float) -> np.ndarray:
+    """
+    Compute roots of the limit equation (1-λ)A(λ) = 0.
+
+    (1-λ)A(λ) = -λ^{l_B} + p·λ^{l_B-l_A} + q = 0
+
+    where p = λ_A/(λ_A+λ_B), q = 1 - p
+
+    Args:
+        l_A: Decode length for Type A
+        l_B: Decode length for Type B (l_A < l_B)
+        lambda_A: Arrival rate for Type A
+        lambda_B: Arrival rate for Type B
+
+    Returns:
+        Array of complex roots
+    """
+    p = lambda_A / (lambda_A + lambda_B)
+    q = 1 - p
+
+    # Polynomial: -λ^{l_B} + p·λ^{l_B-l_A} + q = 0
+    # Degree is l_B
+    # Coefficients from highest degree to lowest
+    coeffs = [0.0] * (l_B + 1)
+    coeffs[0] = -1.0            # λ^{l_B}
+    coeffs[l_A] = p             # λ^{l_B-l_A}
+    coeffs[l_B] = q             # λ^0 (constant term)
+
+    return np.roots(coeffs)
 
 
 # Test

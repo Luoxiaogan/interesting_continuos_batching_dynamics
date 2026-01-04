@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'new_project_fo
 
 from theory_simulator import TheorySimulator
 from multi_type_simulator import MultiTypeLLMSimulator
-from visualize_coupling import plot_comparison, plot_eviction_detail, plot_G_comparison, plot_G_decomposed
+from visualize_coupling import plot_comparison, plot_eviction_detail, plot_G_comparison, plot_G_decomposed, plot_roots_analysis
 from metrics import compute_G, compute_G_A, compute_G_B, compute_G_merge, compute_G_merged_raw
 
 
@@ -269,6 +269,13 @@ def main():
         trajectory,
         output_path=output_dir / 'G_decomposed.png',
         title=f"G Decomposition: l0={config['l0']}, l_A={config['l_A']}, l_B={config['l_B']}"
+    )
+
+    plot_roots_analysis(
+        l0=config['l0'], l_A=config['l_A'], l_B=config['l_B'],
+        lambda_A=config['lambda_A'], lambda_B=config['lambda_B'],
+        output_path=output_dir / 'roots_analysis.png',
+        title="Characteristic & Limit Equation Roots"
     )
 
     print(f"\nExperiment complete!")

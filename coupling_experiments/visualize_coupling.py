@@ -311,6 +311,112 @@ def plot_state_comparison(theory_states: List[Dict],
     pass
 
 
+def plot_roots_analysis(l0: int, l_A: int, l_B: int,
+                        lambda_A: float, lambda_B: float,
+                        output_path: Optional[Path] = None,
+                        title: str = "Roots Analysis"):
+    """
+    Plot characteristic equation and limit equation roots on complex plane.
+
+    Characteristic equation F(λ) = 0:
+        - |λ| > 1: Red × (unstable)
+        - |λ| ≤ 1: Orange ×
+
+    Limit equation (1-λ)A(λ) = 0:
+        - |λ| = 1: Blue ○
+        - |λ| < 1: Green ○
+
+    Args:
+        l0: Initial/prefill length
+        l_A: Decode length for Type A
+        l_B: Decode length for Type B
+        lambda_A: Arrival rate for Type A
+        lambda_B: Arrival rate for Type B
+        output_path: Path to save figure (optional)
+        title: Plot title
+    """
+    from metrics import compute_characteristic_roots, compute_limit_roots
+    import math
+
+    char_roots = compute_characteristic_roots(l0, l_A, l_B, lambda_A, lambda_B)
+    limit_roots = compute_limit_roots(l_A, l_B, lambda_A, lambda_B)
+    gcd = math.gcd(l_A, l_B)
+
+    fig, ax = plt.subplots(figsize=(10, 10))
+
+    # Draw unit circle
+    theta = np.linspace(0, 2 * np.pi, 200)
+    ax.plot(np.cos(theta), np.sin(theta), 'gray', linestyle='--',
+            linewidth=1.5, label='Unit Circle')
+
+    # Track legend entries to avoid duplicates
+    limit_on_circle_plotted = False
+    limit_inside_plotted = False
+    char_unstable_plotted = False
+    char_stable_plotted = False
+
+    # Plot limit equation roots
+    for root in limit_roots:
+        norm = abs(root)
+        if abs(norm - 1.0) < 1e-6:
+            label = 'Limit: |λ|=1' if not limit_on_circle_plotted else None
+            ax.scatter(root.real, root.imag, c='blue', s=100, marker='o',
+                      zorder=5, label=label)
+            limit_on_circle_plotted = True
+        else:
+            label = 'Limit: |λ|<1' if not limit_inside_plotted else None
+            ax.scatter(root.real, root.imag, c='green', s=100, marker='o',
+                      zorder=5, label=label)
+            limit_inside_plotted = True
+
+    # Plot characteristic equation roots
+    for root in char_roots:
+        norm = abs(root)
+        if norm > 1.0 + 1e-6:
+            label = 'Char: |λ|>1 (unstable)' if not char_unstable_plotted else None
+            ax.scatter(root.real, root.imag, c='red', s=120, marker='x',
+                      linewidths=2, zorder=6, label=label)
+            char_unstable_plotted = True
+        else:
+            label = 'Char: |λ|≤1' if not char_stable_plotted else None
+            ax.scatter(root.real, root.imag, c='orange', s=120, marker='x',
+                      linewidths=2, zorder=6, label=label)
+            char_stable_plotted = True
+
+    # Count roots
+    n_limit = len(limit_roots)
+    n_char = len(char_roots)
+    n_char_unstable = sum(1 for r in char_roots if abs(r) > 1.0 + 1e-6)
+
+    # Set title with parameters
+    stability = "Stable (coprime)" if gcd == 1 else f"Unstable (gcd={gcd})"
+    ax.set_title(f'{title}\n'
+                 f'l₀={l0}, l_A={l_A}, l_B={l_B}, gcd={gcd}\n'
+                 f'{stability} | Limit roots: {n_limit}, Char roots: {n_char} '
+                 f'(unstable: {n_char_unstable})',
+                 fontsize=12)
+
+    ax.set_xlabel('Real', fontsize=11)
+    ax.set_ylabel('Imaginary', fontsize=11)
+    ax.set_aspect('equal')
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc='upper left', fontsize=10)
+
+    # Set axis limits with some padding
+    all_roots = np.concatenate([char_roots, limit_roots])
+    max_extent = max(1.2, np.max(np.abs(all_roots)) * 1.1)
+    ax.set_xlim(-max_extent, max_extent)
+    ax.set_ylim(-max_extent, max_extent)
+
+    plt.tight_layout()
+
+    if output_path:
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        print(f"Saved roots analysis plot to {output_path}")
+
+    plt.close()
+
+
 # Quick test
 if __name__ == "__main__":
     # Test with dummy data
