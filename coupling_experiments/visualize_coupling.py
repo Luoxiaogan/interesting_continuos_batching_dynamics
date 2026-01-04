@@ -159,6 +159,138 @@ def plot_G_comparison(trajectory: List[Dict],
     plt.close()
 
 
+def plot_G_decomposed(trajectory: List[Dict],
+                      output_path: Optional[Path] = None,
+                      title: str = "G Decomposition"):
+    """
+    Plot G decomposition: 2x4 grid of subplots.
+
+    Top row: G_A, G_B, G_merge (compensated), G_merged_raw (no compensation)
+             Each shows Theory (blue) vs Simulation (green)
+    Bottom row: Difference (Theory - Simulation) for each metric
+
+    Args:
+        trajectory: List of dicts with batch data
+                    Must include: theory_G_A, theory_G_B, theory_G_merge, theory_G_merged_raw,
+                                  sim_G_A, sim_G_B, sim_G_merge, sim_G_merged_raw
+        output_path: Path to save figure (optional)
+        title: Plot title
+    """
+    batches = [row['batch'] for row in trajectory]
+
+    # Extract data
+    theory_G_A = [row.get('theory_G_A', 0.0) for row in trajectory]
+    theory_G_B = [row.get('theory_G_B', 0.0) for row in trajectory]
+    theory_G_merge = [row.get('theory_G_merge', 0.0) for row in trajectory]
+    theory_G_merged_raw = [row.get('theory_G_merged_raw', 0.0) for row in trajectory]
+
+    sim_G_A = [row.get('sim_G_A', 0.0) for row in trajectory]
+    sim_G_B = [row.get('sim_G_B', 0.0) for row in trajectory]
+    sim_G_merge = [row.get('sim_G_merge', 0.0) for row in trajectory]
+    sim_G_merged_raw = [row.get('sim_G_merged_raw', 0.0) for row in trajectory]
+
+    # Compute differences (Theory - Simulation)
+    diff_G_A = [t - s for t, s in zip(theory_G_A, sim_G_A)]
+    diff_G_B = [t - s for t, s in zip(theory_G_B, sim_G_B)]
+    diff_G_merge = [t - s for t, s in zip(theory_G_merge, sim_G_merge)]
+    diff_G_merged_raw = [t - s for t, s in zip(theory_G_merged_raw, sim_G_merged_raw)]
+
+    fig, axes = plt.subplots(2, 4, figsize=(24, 10))
+
+    # ===== Top row: Theory vs Simulation =====
+
+    # Subplot (0,0): G_A
+    ax = axes[0, 0]
+    ax.plot(batches, theory_G_A, 'b-', linewidth=2, label='Theory', marker='o', markersize=3)
+    ax.plot(batches, sim_G_A, 'g-', linewidth=2, label='Simulation', marker='s', markersize=3)
+    ax.set_xlabel('Batch Index', fontsize=11)
+    ax.set_ylabel('G_A = max - min', fontsize=11)
+    ax.set_title('G_A (Type A only)', fontsize=12)
+    ax.legend(loc='best')
+    ax.grid(True, alpha=0.3)
+
+    # Subplot (0,1): G_B
+    ax = axes[0, 1]
+    ax.plot(batches, theory_G_B, 'b-', linewidth=2, label='Theory', marker='o', markersize=3)
+    ax.plot(batches, sim_G_B, 'g-', linewidth=2, label='Simulation', marker='s', markersize=3)
+    ax.set_xlabel('Batch Index', fontsize=11)
+    ax.set_ylabel('G_B = max - min', fontsize=11)
+    ax.set_title('G_B (Type B only)', fontsize=12)
+    ax.legend(loc='best')
+    ax.grid(True, alpha=0.3)
+
+    # Subplot (0,2): G_merge (compensated)
+    ax = axes[0, 2]
+    ax.plot(batches, theory_G_merge, 'b-', linewidth=2, label='Theory', marker='o', markersize=3)
+    ax.plot(batches, sim_G_merge, 'g-', linewidth=2, label='Simulation', marker='s', markersize=3)
+    ax.set_xlabel('Batch Index', fontsize=11)
+    ax.set_ylabel('G_merge = max - min', fontsize=11)
+    ax.set_title('G_merge (compensated)', fontsize=12)
+    ax.legend(loc='best')
+    ax.grid(True, alpha=0.3)
+
+    # Subplot (0,3): G_merged_raw (no compensation)
+    ax = axes[0, 3]
+    ax.plot(batches, theory_G_merged_raw, 'b-', linewidth=2, label='Theory', marker='o', markersize=3)
+    ax.plot(batches, sim_G_merged_raw, 'g-', linewidth=2, label='Simulation', marker='s', markersize=3)
+    ax.set_xlabel('Batch Index', fontsize=11)
+    ax.set_ylabel('G_merged_raw = max - min', fontsize=11)
+    ax.set_title('G_merged_raw (no compensation)', fontsize=12)
+    ax.legend(loc='best')
+    ax.grid(True, alpha=0.3)
+
+    # ===== Bottom row: Difference (Theory - Simulation) =====
+    # Negative points are marked in red
+
+    def plot_diff_with_negative_highlight(ax, batches, diff_values, title):
+        """Plot difference with negative points highlighted in red."""
+        # Split into positive/zero and negative
+        pos_mask = [d >= 0 for d in diff_values]
+        neg_mask = [d < 0 for d in diff_values]
+
+        # Plot line
+        ax.plot(batches, diff_values, 'purple', linewidth=2, alpha=0.7)
+
+        # Plot positive/zero points in purple
+        pos_batches = [b for b, m in zip(batches, pos_mask) if m]
+        pos_values = [v for v, m in zip(diff_values, pos_mask) if m]
+        ax.scatter(pos_batches, pos_values, c='purple', s=20, zorder=5)
+
+        # Plot negative points in red
+        neg_batches = [b for b, m in zip(batches, neg_mask) if m]
+        neg_values = [v for v, m in zip(diff_values, neg_mask) if m]
+        ax.scatter(neg_batches, neg_values, c='red', s=30, zorder=6, label='< 0')
+
+        ax.axhline(y=0, color='gray', linestyle='--', linewidth=1)
+        ax.set_xlabel('Batch Index', fontsize=11)
+        ax.set_ylabel('Theory - Simulation', fontsize=11)
+        ax.set_title(title, fontsize=12)
+        ax.grid(True, alpha=0.3)
+        if neg_batches:
+            ax.legend(loc='best')
+
+    # Subplot (1,0): Diff G_A
+    plot_diff_with_negative_highlight(axes[1, 0], batches, diff_G_A, 'Δ G_A')
+
+    # Subplot (1,1): Diff G_B
+    plot_diff_with_negative_highlight(axes[1, 1], batches, diff_G_B, 'Δ G_B')
+
+    # Subplot (1,2): Diff G_merge
+    plot_diff_with_negative_highlight(axes[1, 2], batches, diff_G_merge, 'Δ G_merge')
+
+    # Subplot (1,3): Diff G_merged_raw
+    plot_diff_with_negative_highlight(axes[1, 3], batches, diff_G_merged_raw, 'Δ G_merged_raw')
+
+    fig.suptitle(title, fontsize=14)
+    plt.tight_layout()
+
+    if output_path:
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        print(f"Saved G decomposed plot to {output_path}")
+
+    plt.close()
+
+
 def plot_state_comparison(theory_states: List[Dict],
                          sim_states: List[Dict],
                          l0: int,

@@ -103,6 +103,191 @@ def compute_G_weighted(state: Dict, l0: int, l_A: int, l_B: int,
     return max(weighted_values) - min(weighted_values)
 
 
+def compute_G_A(state: Dict, l0: int, l_A: int, l_B: int,
+                state_format: str = 'stage') -> float:
+    """
+    Compute G_A = max - min for Type A only.
+
+    Args:
+        state: State dictionary
+        l0: Initial/prefill length
+        l_A: Decode length for Type A
+        l_B: Decode length for Type B (not used, for API consistency)
+        state_format: 'stage' or 'length'
+
+    Returns:
+        G_A = max - min of Type A values across valid stages
+    """
+    values = []
+
+    if state_format == 'stage':
+        for stage in range(l_A):
+            if stage in state:
+                values.append(state[stage][0])
+
+    elif state_format == 'length':
+        for length in range(l0, l0 + l_A):
+            if length in state:
+                values.append(state[length][0])
+
+    if not values:
+        return 0.0
+
+    return max(values) - min(values)
+
+
+def compute_G_B(state: Dict, l0: int, l_A: int, l_B: int,
+                state_format: str = 'stage') -> float:
+    """
+    Compute G_B = max - min for Type B only.
+
+    Args:
+        state: State dictionary
+        l0: Initial/prefill length
+        l_A: Decode length for Type A (not used, for API consistency)
+        l_B: Decode length for Type B
+        state_format: 'stage' or 'length'
+
+    Returns:
+        G_B = max - min of Type B values across valid stages
+    """
+    values = []
+
+    if state_format == 'stage':
+        for stage in range(l_B):
+            if stage in state:
+                values.append(state[stage][1])
+
+    elif state_format == 'length':
+        for length in range(l0, l0 + l_B):
+            if length in state:
+                values.append(state[length][1])
+
+    if not values:
+        return 0.0
+
+    return max(values) - min(values)
+
+
+def compute_G_merge(state: Dict, l0: int, l_A: int, l_B: int,
+                    lambda_A: float, lambda_B: float,
+                    state_format: str = 'stage') -> float:
+    """
+    Compute G_merge = max - min of merged state with compensation.
+
+    For stages where only one type exists (after the shorter type completes),
+    we compensate by scaling up to account for the missing type's flow.
+
+    Example (l_A=2, l_B=3, λ_A=λ_B=1):
+        Stage 0: merged = A + B
+        Stage 1: merged = A + B
+        Stage 2: merged = B * (λ_A + λ_B) / λ_B  (compensate for missing A)
+
+    Args:
+        state: State dictionary
+        l0: Initial/prefill length
+        l_A: Decode length for Type A
+        l_B: Decode length for Type B
+        lambda_A: Arrival rate for Type A
+        lambda_B: Arrival rate for Type B
+        state_format: 'stage' or 'length'
+
+    Returns:
+        G_merge = max - min of compensated merged values
+    """
+    merged_values = []
+    max_stage = max(l_A, l_B) - 1
+    min_l = min(l_A, l_B)
+    total_lambda = lambda_A + lambda_B
+
+    if state_format == 'stage':
+        for stage in range(max_stage + 1):
+            if stage not in state:
+                continue
+
+            if stage < min_l:
+                # Both types present: simple sum
+                merged = state[stage][0] + state[stage][1]
+            elif l_A < l_B:
+                # Only Type B present (A has completed)
+                # Compensate: B * (λ_A + λ_B) / λ_B
+                merged = state[stage][1] * total_lambda / lambda_B
+            else:
+                # Only Type A present (B has completed)
+                # Compensate: A * (λ_A + λ_B) / λ_A
+                merged = state[stage][0] * total_lambda / lambda_A
+
+            merged_values.append(merged)
+
+    elif state_format == 'length':
+        for stage in range(max_stage + 1):
+            length = l0 + stage
+            if length not in state:
+                continue
+
+            if stage < min_l:
+                # Both types present
+                merged = state[length][0] + state[length][1]
+            elif l_A < l_B:
+                # Only Type B present
+                merged = state[length][1] * total_lambda / lambda_B
+            else:
+                # Only Type A present
+                merged = state[length][0] * total_lambda / lambda_A
+
+            merged_values.append(merged)
+
+    if not merged_values:
+        return 0.0
+
+    return max(merged_values) - min(merged_values)
+
+
+def compute_G_merged_raw(state: Dict, l0: int, l_A: int, l_B: int,
+                         state_format: str = 'stage') -> float:
+    """
+    Compute G_merged_raw = max - min of merged state WITHOUT compensation.
+
+    Simply sums A + B at each stage. For stages where only one type exists,
+    the other type contributes 0 (no compensation).
+
+    Args:
+        state: State dictionary
+        l0: Initial/prefill length
+        l_A: Decode length for Type A
+        l_B: Decode length for Type B
+        state_format: 'stage' or 'length'
+
+    Returns:
+        G_merged_raw = max - min of raw merged values (no compensation)
+    """
+    merged_values = []
+    max_stage = max(l_A, l_B) - 1
+
+    if state_format == 'stage':
+        for stage in range(max_stage + 1):
+            if stage not in state:
+                continue
+            # Sum both types (0 if not valid)
+            val_A = state[stage][0] if stage < l_A else 0.0
+            val_B = state[stage][1] if stage < l_B else 0.0
+            merged_values.append(val_A + val_B)
+
+    elif state_format == 'length':
+        for stage in range(max_stage + 1):
+            length = l0 + stage
+            if length not in state:
+                continue
+            val_A = state[length][0] if stage < l_A else 0.0
+            val_B = state[length][1] if stage < l_B else 0.0
+            merged_values.append(val_A + val_B)
+
+    if not merged_values:
+        return 0.0
+
+    return max(merged_values) - min(merged_values)
+
+
 # Test
 if __name__ == "__main__":
     print("Testing metrics...")

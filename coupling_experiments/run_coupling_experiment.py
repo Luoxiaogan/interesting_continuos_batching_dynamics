@@ -22,8 +22,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'new_project_fo
 
 from theory_simulator import TheorySimulator
 from multi_type_simulator import MultiTypeLLMSimulator
-from visualize_coupling import plot_comparison, plot_eviction_detail, plot_G_comparison
-from metrics import compute_G
+from visualize_coupling import plot_comparison, plot_eviction_detail, plot_G_comparison, plot_G_decomposed
+from metrics import compute_G, compute_G_A, compute_G_B, compute_G_merge, compute_G_merged_raw
 
 
 def get_git_commit():
@@ -122,23 +122,39 @@ def run_experiment(config: dict) -> dict:
         # Theory admission (can be negative)
         theory_adm = theory_admissions[batch] if batch < len(theory_admissions) else 0.0
 
-        # Theory state and G
+        # Theory state and G metrics
         if batch < len(theory_states):
             theory_state = theory_states[batch]['state']
             theory_G = compute_G(theory_state, l0, l_A, l_B, state_format='stage')
+            theory_G_A = compute_G_A(theory_state, l0, l_A, l_B, state_format='stage')
+            theory_G_B = compute_G_B(theory_state, l0, l_A, l_B, state_format='stage')
+            theory_G_merge = compute_G_merge(theory_state, l0, l_A, l_B, lambda_A, lambda_B, state_format='stage')
+            theory_G_merged_raw = compute_G_merged_raw(theory_state, l0, l_A, l_B, state_format='stage')
         else:
             theory_G = 0.0
+            theory_G_A = 0.0
+            theory_G_B = 0.0
+            theory_G_merge = 0.0
+            theory_G_merged_raw = 0.0
 
         # Simulation admission (>= 0)
         sim_adm_data = sim_admissions_list[batch] if batch < len(sim_admissions_list) else {}
         sim_adm = sum(sim_adm_data.get('admissions', {}).values())
 
-        # Simulation state and G
+        # Simulation state and G metrics
         if batch < len(sim_states_list):
             sim_state = sim_states_list[batch]['state']
             sim_G = compute_G(sim_state, l0, l_A, l_B, state_format='length')
+            sim_G_A = compute_G_A(sim_state, l0, l_A, l_B, state_format='length')
+            sim_G_B = compute_G_B(sim_state, l0, l_A, l_B, state_format='length')
+            sim_G_merge = compute_G_merge(sim_state, l0, l_A, l_B, lambda_A, lambda_B, state_format='length')
+            sim_G_merged_raw = compute_G_merged_raw(sim_state, l0, l_A, l_B, state_format='length')
         else:
             sim_G = 0.0
+            sim_G_A = 0.0
+            sim_G_B = 0.0
+            sim_G_merge = 0.0
+            sim_G_merged_raw = 0.0
 
         # Simulation eviction by stage
         sim_evic_data = sim_evictions_list[batch] if batch < len(sim_evictions_list) else {}
@@ -163,6 +179,14 @@ def run_experiment(config: dict) -> dict:
             'sim_eviction_total': eviction_total,
             'theory_G': theory_G,
             'sim_G': sim_G,
+            'theory_G_A': theory_G_A,
+            'theory_G_B': theory_G_B,
+            'theory_G_merge': theory_G_merge,
+            'theory_G_merged_raw': theory_G_merged_raw,
+            'sim_G_A': sim_G_A,
+            'sim_G_B': sim_G_B,
+            'sim_G_merge': sim_G_merge,
+            'sim_G_merged_raw': sim_G_merged_raw,
         }
         for stage in range(max_stage + 1):
             row[f'sim_eviction_stage{stage}'] = eviction_by_stage[stage]
@@ -203,16 +227,10 @@ def save_results(results: dict, output_dir: Path):
 
 def main():
     """Main entry point."""
-    # Default configuration
-    config = {
-        "l0": 3,
-        "l_A": 2,
-        "l_B": 3,
-        "B": 60,
-        "lambda_A": 1.0,
-        "lambda_B": 1.0,
-        "steps": 50,
-    }
+    # Load configuration from config.json
+    config_path = Path(__file__).parent / 'config.json'
+    with open(config_path, 'r') as f:
+        config = json.load(f)
 
     # Create output directory with timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -245,6 +263,12 @@ def main():
         trajectory,
         output_path=output_dir / 'G_comparison.png',
         title=f"G (max-min) Comparison: l0={config['l0']}, l_A={config['l_A']}, l_B={config['l_B']}"
+    )
+
+    plot_G_decomposed(
+        trajectory,
+        output_path=output_dir / 'G_decomposed.png',
+        title=f"G Decomposition: l0={config['l0']}, l_A={config['l_A']}, l_B={config['l_B']}"
     )
 
     print(f"\nExperiment complete!")
