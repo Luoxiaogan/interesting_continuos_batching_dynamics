@@ -438,6 +438,25 @@ def compute_transition_matrix(l0: int, l_A: int, l_B: int,
 
     For the deviation from equilibrium: δ(t+1) = A * δ(t)
 
+    Derivation:
+    -----------
+    Token balance constraint: sum_s W_s * M_s(t) = B (constant)
+
+    Dynamics:
+    - Shift: M_s(t+1) = M_{s-1}(t) for s = 1, ..., l_B-1
+    - Admission M_0(t+1) determined by token balance at t+1
+
+    From token balance at t+1:
+        sum_s W_s * M_s(t+1) = B
+        W_0 * M_0(t+1) + sum_{s=1}^{l_B-1} W_s * M_{s-1}(t) = B
+        W_0 * M_0(t+1) + sum_{s=0}^{l_B-2} W_{s+1} * M_s(t) = B
+
+    Using deviation δ_s = M_s - N* (where N* = B / sum(W)):
+        δ_0(t+1) = -1/W_0 * sum_{s=0}^{l_B-2} W_{s+1} * δ_s(t)
+
+    NOTE: δ_{l_B-1}(t) does NOT appear in this equation because those
+    requests complete and leave the system at time t.
+
     Args:
         l0: Initial/prefill length
         l_A: Decode length for Type A
@@ -447,42 +466,42 @@ def compute_transition_matrix(l0: int, l_A: int, l_B: int,
 
     Returns:
         Transition matrix A of shape (l_B, l_B)
+        Note: The last column is all zeros (M_{l_B-1} leaves the system).
+              This gives one zero eigenvalue; the other l_B-1 eigenvalues
+              match the characteristic equation roots.
     """
     n = l_B  # Dimension of merged state vector
     p = lambda_A / (lambda_A + lambda_B)
     q = 1 - p
 
-    A = np.zeros((n, n))
-
-    # Row 0: admission equation
-    # a(t) = (completion_tokens - increment_tokens) / W_0
-    # M_0(t+1) = a(t) depends on M(t)
-    W_0 = l0 + 1
-
+    # Compute weight vector W_s
+    # W_s = l0 + s + 1  for s < l_A (both types present)
+    # W_s = (l0 + s + 1) * q  for s >= l_A (only Type B, compensated)
+    W = np.zeros(n)
     for s in range(n):
         if s < l_A:
-            # Both types at stage s, weight = l0 + s + 1
-            W_s = l0 + s + 1
+            W[s] = l0 + s + 1
         else:
-            # Only Type B at stage s, effective weight for merged = (l0+s+1)*q
-            W_s = (l0 + s + 1) * q
+            W[s] = (l0 + s + 1) * q
 
-        if s == n - 1:
-            # Completion stage: releases (l0 + l_B) tokens per request
-            # For merged state: completion releases W_{l_B-1} * (l0+l_B) / W_{l_B-1} = (l0+l_B)
-            # But we need to account for the shift...
-            # Actually for completion: tokens released = (l0 + l_B) per request
-            completion_coeff = (l0 + l_B) * q if l_A < l_B else (l0 + l_B)
-            A[0, s] = completion_coeff / W_0
-        else:
-            # Non-completion stage: each request gains 1 token
-            # Contribution to admission = -1 / W_0 per request
-            A[0, s] = -W_s / W_0  # Normalized by effective weight
+    W_0 = W[0]
+
+    A = np.zeros((n, n))
+
+    # Row 0: admission equation from token balance
+    # δ_0(t+1) = -1/W_0 * sum_{s=0}^{l_B-2} W_{s+1} * δ_s(t)
+    # Coefficient for δ_s(t) is -W_{s+1}/W_0 for s = 0, ..., l_B-2
+    # Coefficient for δ_{l_B-1}(t) is 0 (requests leave the system)
+    for s in range(n - 1):
+        A[0, s] = -W[s + 1] / W_0
+
+    # IMPORTANT: Last column element is 0 (requests at stage l_B-1 complete and leave)
+    A[0, n - 1] = 0.0
 
     # Rows 1 to n-1: shift (advance) operation
     # M_s(t+1) = M_{s-1}(t) for s = 1, ..., n-1
     for s in range(1, n):
-        A[s, s-1] = 1.0
+        A[s, s - 1] = 1.0
 
     return A
 
