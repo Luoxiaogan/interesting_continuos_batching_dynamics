@@ -764,6 +764,167 @@ def compute_G_based_energy(M: List[float], M_star: np.ndarray) -> float:
     return G * G
 
 
+# ============================================================================
+# 4.5 P-Norm and Inner Product Functions (Experiments 1 & 2)
+# ============================================================================
+
+def compute_P_norm_squared(x: np.ndarray, P: np.ndarray) -> float:
+    """
+    Compute ||x||_P^2 = x^T P x.
+
+    This is the squared P-norm (Lyapunov energy without centering).
+
+    Args:
+        x: Vector
+        P: Positive definite matrix
+
+    Returns:
+        ||x||_P^2
+    """
+    return float(x @ P @ x)
+
+
+def compute_P_inner_product(x: np.ndarray, y: np.ndarray, P: np.ndarray) -> float:
+    """
+    Compute <x, y>_P = x^T P y.
+
+    This is the P-weighted inner product.
+
+    Args:
+        x: First vector
+        y: Second vector
+        P: Positive definite matrix
+
+    Returns:
+        <x, y>_P
+    """
+    return float(x @ P @ y)
+
+
+def compute_eviction_P_norm_analysis(M_sim_after: np.ndarray,
+                                      eviction_by_stage: Dict[int, float],
+                                      P: np.ndarray,
+                                      M_star: np.ndarray,
+                                      l0: int, l_A: int, l_B: int,
+                                      lambda_A: float, lambda_B: float) -> Dict:
+    """
+    Experiment 1: Analyze the effect of eviction on P-norm.
+
+    Computes the P-norm distance to M* before and after eviction.
+    "Before eviction" state is reconstructed by adding back evicted requests.
+
+    Args:
+        M_sim_after: Simulation state vector AFTER eviction (merged compensated)
+        eviction_by_stage: Dict mapping stage -> eviction amount
+        P: Lyapunov matrix
+        M_star: Equilibrium state
+        l0, l_A, l_B, lambda_A, lambda_B: System parameters
+
+    Returns:
+        Dictionary with:
+        - has_eviction: whether eviction occurred
+        - dist_before: ||M_before - M*||_P^2
+        - dist_after: ||M_after - M*||_P^2
+        - dist_decreased: whether distance decreased (dist_after <= dist_before)
+        - dist_change: dist_after - dist_before (negative means decrease)
+    """
+    # Check if any eviction occurred
+    total_eviction = sum(eviction_by_stage.values())
+    has_eviction = total_eviction > 1e-9
+
+    if not has_eviction:
+        # No eviction, before = after
+        dist_after = compute_P_norm_squared(M_sim_after - M_star, P)
+        return {
+            'has_eviction': False,
+            'dist_before': dist_after,
+            'dist_after': dist_after,
+            'dist_decreased': True,  # Trivially true (no change)
+            'dist_change': 0.0,
+        }
+
+    # Reconstruct "before eviction" state by adding back evicted requests
+    # Eviction is in terms of raw requests, need to convert to merged compensated
+    q = lambda_B / (lambda_A + lambda_B)
+    total_lambda = lambda_A + lambda_B
+
+    M_before = M_sim_after.copy()
+    for stage, amount in eviction_by_stage.items():
+        if amount > 1e-9 and 0 <= stage < len(M_before):
+            # For stage < l_A: both types, eviction adds directly
+            # For stage >= l_A: only Type B, need to compensate
+            if stage < l_A:
+                # Both types present, eviction is sum of both types
+                M_before[stage] += amount
+            else:
+                # Only Type B, compensated value = B * (total_lambda / lambda_B)
+                M_before[stage] += amount * total_lambda / lambda_B
+
+    # Compute P-norm distances
+    dist_before = compute_P_norm_squared(M_before - M_star, P)
+    dist_after = compute_P_norm_squared(M_sim_after - M_star, P)
+
+    return {
+        'has_eviction': True,
+        'dist_before': dist_before,
+        'dist_after': dist_after,
+        'dist_decreased': dist_after <= dist_before + 1e-9,
+        'dist_change': dist_after - dist_before,
+        'M_before': M_before.tolist(),
+        'M_after': M_sim_after.tolist(),
+    }
+
+
+def compute_inner_product_analysis(M_theory: np.ndarray,
+                                    M_sim: np.ndarray,
+                                    P: np.ndarray,
+                                    M_star: np.ndarray) -> Dict:
+    """
+    Experiment 2: Analyze the sign of <x^S, Δ>_P.
+
+    For V^T - V^S = 2<x^S, Δ>_P + ||Δ||_P^2, we need <x^S, Δ>_P >= 0
+    to guarantee V^T >= V^S (since ||Δ||_P^2 >= 0 always).
+
+    Args:
+        M_theory: Theory state vector (merged compensated)
+        M_sim: Simulation state vector (merged compensated)
+        P: Lyapunov matrix
+        M_star: Equilibrium state
+
+    Returns:
+        Dictionary with:
+        - x_S: M^S - M*
+        - Delta: M^T - M^S
+        - inner_prod_P: <x^S, Δ>_P
+        - Delta_P_norm_sq: ||Δ||_P^2
+        - inner_prod_geq_0: whether <x^S, Δ>_P >= 0
+        - V_diff_decomposition: V^T - V^S = 2<x^S, Δ>_P + ||Δ||_P^2
+    """
+    x_S = M_sim - M_star
+    Delta = M_theory - M_sim
+
+    inner_prod_P = compute_P_inner_product(x_S, Delta, P)
+    Delta_P_norm_sq = compute_P_norm_squared(Delta, P)
+
+    # V^T - V^S decomposition
+    V_diff = 2 * inner_prod_P + Delta_P_norm_sq
+
+    # Also compute V^T and V^S directly for verification
+    V_theory = compute_P_norm_squared(M_theory - M_star, P)
+    V_sim = compute_P_norm_squared(M_sim - M_star, P)
+
+    return {
+        'x_S_norm': float(np.linalg.norm(x_S)),
+        'Delta_norm': float(np.linalg.norm(Delta)),
+        'inner_prod_P': inner_prod_P,
+        'Delta_P_norm_sq': Delta_P_norm_sq,
+        'inner_prod_geq_0': inner_prod_P >= -1e-9,
+        'V_diff_decomposition': V_diff,
+        'V_diff_actual': V_theory - V_sim,
+        'decomposition_error': abs(V_diff - (V_theory - V_sim)),
+    }
+
+
 # Test
 if __name__ == "__main__":
     print("Testing metrics...")

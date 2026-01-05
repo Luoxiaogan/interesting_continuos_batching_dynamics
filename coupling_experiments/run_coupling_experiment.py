@@ -30,7 +30,9 @@ from visualize_coupling import (
     # New visualization functions for 4.1-4.4 analysis
     plot_delta_extrema, plot_delta_heatmap, plot_lyapunov_energy,
     plot_case_distribution, plot_G_vs_V_relation,
-    plot_eviction_delta_relation, plot_analysis_dashboard
+    plot_eviction_delta_relation, plot_analysis_dashboard,
+    # 4.5 P-norm experiments visualization
+    plot_p_norm_experiments
 )
 from metrics import (compute_G, compute_G_A, compute_G_B, compute_G_merge,
                      compute_G_merged_raw, compute_merged_compensated_vector,
@@ -43,7 +45,9 @@ from metrics import (compute_G, compute_G_A, compute_G_B, compute_G_merge,
                      # 4.3 Argmax/Argmin tracking
                      compute_argmax_argmin, check_delta_at_extrema,
                      # 4.4 Norm relation functions
-                     compute_G_squared_over_V, compute_G_based_energy)
+                     compute_G_squared_over_V, compute_G_based_energy,
+                     # 4.5 P-Norm experiments (NEW)
+                     compute_eviction_P_norm_analysis, compute_inner_product_analysis)
 
 
 def get_git_commit():
@@ -162,6 +166,7 @@ def run_experiment(config: dict) -> dict:
         'state_vectors': [],  # For state_vectors.csv and aligned txt
         'lyapunov_analysis': [],  # For 4.1 energy analysis
         'delta_analysis': [],  # For 4.2, 4.3, 4.4 analysis
+        'p_norm_analysis': [],  # For 4.5 experiments (NEW)
         'lyapunov_info': {
             'A': A.tolist() if A is not None else None,
             'W': W.tolist(),
@@ -350,6 +355,43 @@ def run_experiment(config: dict) -> dict:
             'G_theory_geq_G_sim': G_theory_geq_G_sim,
         })
 
+        # ===== 4.5 P-Norm Experiments (NEW) =====
+        if P is not None:
+            # Experiment 1: Eviction effect on P-norm
+            eviction_analysis = compute_eviction_P_norm_analysis(
+                M_sim_after=sim_vec_arr,
+                eviction_by_stage=eviction_by_stage,
+                P=P,
+                M_star=M_star,
+                l0=l0, l_A=l_A, l_B=l_B,
+                lambda_A=lambda_A, lambda_B=lambda_B
+            )
+
+            # Experiment 2: Inner product <x^S, Δ>_P analysis
+            inner_prod_analysis = compute_inner_product_analysis(
+                M_theory=theory_vec_arr,
+                M_sim=sim_vec_arr,
+                P=P,
+                M_star=M_star
+            )
+
+            results['p_norm_analysis'].append({
+                'batch': batch,
+                # Experiment 1: Eviction P-norm effect
+                'has_eviction': eviction_analysis['has_eviction'],
+                'dist_before': eviction_analysis['dist_before'],
+                'dist_after': eviction_analysis['dist_after'],
+                'dist_decreased': eviction_analysis['dist_decreased'],
+                'dist_change': eviction_analysis['dist_change'],
+                # Experiment 2: Inner product analysis
+                'inner_prod_P': inner_prod_analysis['inner_prod_P'],
+                'Delta_P_norm_sq': inner_prod_analysis['Delta_P_norm_sq'],
+                'inner_prod_geq_0': inner_prod_analysis['inner_prod_geq_0'],
+                'V_diff_decomposition': inner_prod_analysis['V_diff_decomposition'],
+                'V_diff_actual': inner_prod_analysis['V_diff_actual'],
+                'decomposition_error': inner_prod_analysis['decomposition_error'],
+            })
+
     print(f"Simulation complete. {len(results['trajectory'])} batches recorded.")
     return results
 
@@ -387,6 +429,9 @@ def save_results(results: dict, output_dir: Path):
 
     # Save delta_analysis.csv (4.2, 4.3, 4.4)
     save_delta_analysis(results.get('delta_analysis', []), output_dir)
+
+    # Save p_norm_analysis.csv (4.5 experiments)
+    save_p_norm_analysis(results.get('p_norm_analysis', []), output_dir)
 
     # Save analysis_summary.json
     save_analysis_summary(results, output_dir)
@@ -515,6 +560,28 @@ def save_delta_analysis(delta_data: list, output_dir: Path):
     print(f"Saved delta_analysis.csv")
 
 
+def save_p_norm_analysis(p_norm_data: list, output_dir: Path):
+    """Save P-norm experiment analysis to CSV (Experiments 1 & 2)."""
+    if not p_norm_data:
+        return
+
+    fieldnames = ['batch',
+                  # Experiment 1: Eviction P-norm effect
+                  'has_eviction', 'dist_before', 'dist_after',
+                  'dist_decreased', 'dist_change',
+                  # Experiment 2: Inner product analysis
+                  'inner_prod_P', 'Delta_P_norm_sq', 'inner_prod_geq_0',
+                  'V_diff_decomposition', 'V_diff_actual', 'decomposition_error']
+
+    with open(output_dir / 'p_norm_analysis.csv', 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in p_norm_data:
+            writer.writerow({k: row[k] for k in fieldnames})
+
+    print(f"Saved p_norm_analysis.csv")
+
+
 def save_analysis_summary(results: dict, output_dir: Path):
     """Save summary statistics of the analysis."""
     summary = {
@@ -573,6 +640,37 @@ def save_analysis_summary(results: dict, output_dir: Path):
             'eviction_at_m_S_count': eviction_at_m_S,
         }
 
+    # P-norm analysis statistics (Experiments 1 & 2)
+    p_norm_data = results.get('p_norm_analysis', [])
+    if p_norm_data:
+        # Experiment 1: Eviction P-norm effect
+        eviction_batches = [r for r in p_norm_data if r['has_eviction']]
+        if eviction_batches:
+            dist_decreased_count = sum(1 for r in eviction_batches if r['dist_decreased'])
+            avg_dist_change = sum(r['dist_change'] for r in eviction_batches) / len(eviction_batches)
+        else:
+            dist_decreased_count = 0
+            avg_dist_change = 0.0
+
+        # Experiment 2: Inner product analysis
+        inner_prod_geq_0_count = sum(1 for r in p_norm_data if r['inner_prod_geq_0'])
+        inner_prod_values = [r['inner_prod_P'] for r in p_norm_data]
+        avg_inner_prod = sum(inner_prod_values) / len(inner_prod_values)
+        min_inner_prod = min(inner_prod_values)
+
+        summary['p_norm_summary'] = {
+            # Experiment 1
+            'total_eviction_batches': len(eviction_batches),
+            'eviction_dist_decreased_count': dist_decreased_count,
+            'eviction_dist_decreased_rate': dist_decreased_count / len(eviction_batches) if eviction_batches else 1.0,
+            'avg_dist_change_when_eviction': avg_dist_change,
+            # Experiment 2
+            'inner_prod_geq_0_count': inner_prod_geq_0_count,
+            'inner_prod_geq_0_rate': inner_prod_geq_0_count / len(p_norm_data),
+            'avg_inner_prod_P': avg_inner_prod,
+            'min_inner_prod_P': min_inner_prod,
+        }
+
     # Convert numpy types to native Python types for JSON serialization
     def convert_to_native(obj):
         if isinstance(obj, dict):
@@ -612,6 +710,16 @@ def save_analysis_summary(results: dict, output_dir: Path):
         print(f"  G^T >= G^S (dominance): {ds['G_dominance_count']}/{len(delta_data)} "
               f"({ds['G_dominance_rate']*100:.1f}%)")
         print(f"  Eviction at m^S: {ds['eviction_at_m_S_count']}")
+
+    if 'p_norm_summary' in summary:
+        ps = summary['p_norm_summary']
+        print(f"\nP-Norm Experiments:")
+        print(f"  [Exp1] Eviction decreases ||M-M*||_P: {ps['eviction_dist_decreased_count']}/{ps['total_eviction_batches']} "
+              f"({ps['eviction_dist_decreased_rate']*100:.1f}%)")
+        print(f"  [Exp1] Avg dist change when eviction: {ps['avg_dist_change_when_eviction']:.4f}")
+        print(f"  [Exp2] <x^S, Δ>_P >= 0: {ps['inner_prod_geq_0_count']}/{len(p_norm_data)} "
+              f"({ps['inner_prod_geq_0_rate']*100:.1f}%)")
+        print(f"  [Exp2] Avg <x^S, Δ>_P: {ps['avg_inner_prod_P']:.4f}, Min: {ps['min_inner_prod_P']:.4f}")
 
     print("=" * 60)
     print(f"Saved analysis_summary.json")
@@ -732,6 +840,15 @@ def main():
             delta_data,
             output_path=output_dir / 'analysis_dashboard.png',
             title=f"Analysis Dashboard: l0={config['l0']}, l_A={config['l_A']}, l_B={config['l_B']}"
+        )
+
+    # 8. P-norm experiments (Experiments 1 & 2)
+    p_norm_data = results.get('p_norm_analysis', [])
+    if p_norm_data:
+        plot_p_norm_experiments(
+            p_norm_data,
+            output_path=output_dir / 'p_norm_experiments.png',
+            title=f"P-Norm Experiments: l0={config['l0']}, l_A={config['l_A']}, l_B={config['l_B']}"
         )
 
     print(f"\nExperiment complete!")

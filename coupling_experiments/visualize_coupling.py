@@ -1100,6 +1100,108 @@ def plot_analysis_dashboard(trajectory: List[Dict],
     plt.close()
 
 
+def plot_p_norm_experiments(p_norm_data: List[Dict],
+                            output_path: Optional[Path] = None,
+                            title: str = "P-Norm Experiments Analysis") -> None:
+    """
+    Plot P-norm experiment results (Experiments 1 & 2).
+
+    Top row: Experiment 1 - Eviction effect on P-norm distance
+    Bottom row: Experiment 2 - Inner product <x^S, Δ>_P analysis
+
+    Args:
+        p_norm_data: List of dictionaries from p_norm_analysis
+        output_path: Optional path to save the figure
+        title: Figure title
+    """
+    if not p_norm_data:
+        print("No P-norm data to plot")
+        return
+
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+
+    batches = [row['batch'] for row in p_norm_data]
+
+    # ===== (0,0) Experiment 1: Distance before vs after eviction =====
+    ax = axes[0, 0]
+    eviction_batches = [(row['batch'], row['dist_before'], row['dist_after'])
+                        for row in p_norm_data if row['has_eviction']]
+    if eviction_batches:
+        eb, dist_before, dist_after = zip(*eviction_batches)
+        ax.scatter(eb, dist_before, c='red', marker='o', s=50, label='Before eviction', alpha=0.7)
+        ax.scatter(eb, dist_after, c='green', marker='s', s=50, label='After eviction', alpha=0.7)
+        # Connect with lines
+        for i in range(len(eb)):
+            ax.plot([eb[i], eb[i]], [dist_before[i], dist_after[i]], 'gray', linewidth=1, alpha=0.5)
+        ax.legend()
+        ax.set_title('Exp1: ||M - M*||²_P Before/After Eviction')
+    else:
+        ax.text(0.5, 0.5, 'No eviction events', ha='center', va='center', transform=ax.transAxes)
+        ax.set_title('Exp1: No Eviction Events')
+    ax.set_xlabel('Batch')
+    ax.set_ylabel('P-norm squared')
+    ax.grid(True, alpha=0.3)
+
+    # ===== (0,1) Experiment 1: Distance change histogram =====
+    ax = axes[0, 1]
+    dist_changes = [row['dist_change'] for row in p_norm_data if row['has_eviction']]
+    if dist_changes:
+        colors = ['green' if d <= 0 else 'red' for d in dist_changes]
+        ax.bar(range(len(dist_changes)), dist_changes, color=colors, alpha=0.7)
+        ax.axhline(y=0, color='black', linestyle='-', linewidth=1)
+
+        # Stats
+        decreased = sum(1 for d in dist_changes if d <= 0)
+        total = len(dist_changes)
+        ax.set_title(f'Exp1: Distance Change (Decreased: {decreased}/{total} = {decreased/total*100:.1f}%)')
+        ax.set_xlabel('Eviction Event Index')
+        ax.set_ylabel('dist_after - dist_before')
+    else:
+        ax.text(0.5, 0.5, 'No eviction events', ha='center', va='center', transform=ax.transAxes)
+        ax.set_title('Exp1: Distance Change')
+    ax.grid(True, alpha=0.3)
+
+    # ===== (1,0) Experiment 2: Inner product <x^S, Δ>_P over time =====
+    ax = axes[1, 0]
+    inner_prods = [row['inner_prod_P'] for row in p_norm_data]
+    colors = ['green' if ip >= 0 else 'red' for ip in inner_prods]
+    ax.bar(batches, inner_prods, color=colors, alpha=0.7, width=1.0)
+    ax.axhline(y=0, color='black', linestyle='-', linewidth=1)
+
+    # Stats
+    geq_0_count = sum(1 for ip in inner_prods if ip >= -1e-9)
+    ax.set_title(f'Exp2: <x^S, Δ>_P (≥0: {geq_0_count}/{len(inner_prods)} = {geq_0_count/len(inner_prods)*100:.1f}%)')
+    ax.set_xlabel('Batch')
+    ax.set_ylabel('<x^S, Δ>_P')
+    ax.grid(True, alpha=0.3)
+
+    # ===== (1,1) Experiment 2: V^T - V^S decomposition verification =====
+    ax = axes[1, 1]
+    V_diff_actual = [row['V_diff_actual'] for row in p_norm_data]
+    inner_prods = [row['inner_prod_P'] for row in p_norm_data]
+    Delta_P_norm_sq = [row['Delta_P_norm_sq'] for row in p_norm_data]
+
+    ax.plot(batches, V_diff_actual, 'b-', linewidth=2, label='V^T - V^S (actual)', alpha=0.7)
+    ax.plot(batches, [2*ip for ip in inner_prods], 'g--', linewidth=2, label='2<x^S, Δ>_P', alpha=0.7)
+    ax.plot(batches, Delta_P_norm_sq, 'r:', linewidth=2, label='||Δ||²_P', alpha=0.7)
+    ax.axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
+
+    ax.legend()
+    ax.set_title('Exp2: V^T - V^S = 2<x^S, Δ>_P + ||Δ||²_P')
+    ax.set_xlabel('Batch')
+    ax.set_ylabel('Value')
+    ax.grid(True, alpha=0.3)
+
+    fig.suptitle(title, fontsize=14)
+    plt.tight_layout()
+
+    if output_path:
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        print(f"Saved P-norm experiments plot to {output_path}")
+
+    plt.close()
+
+
 # Quick test
 if __name__ == "__main__":
     # Test with dummy data
