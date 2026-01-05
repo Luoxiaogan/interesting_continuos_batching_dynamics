@@ -289,6 +289,71 @@ def compute_G_merged_raw(state: Dict, l0: int, l_A: int, l_B: int,
     return max(merged_values) - min(merged_values)
 
 
+def compute_merged_compensated_vector(state: Dict, l0: int, l_A: int, l_B: int,
+                                       lambda_A: float, lambda_B: float,
+                                       state_format: str = 'stage') -> List[float]:
+    """
+    Compute merged state vector with compensation.
+
+    Returns a vector of length max(l_A, l_B) where each element is the
+    merged (A+B) value at that stage, with compensation for stages where
+    only one type exists.
+
+    Args:
+        state: State dictionary
+        l0: Initial/prefill length
+        l_A: Decode length for Type A
+        l_B: Decode length for Type B
+        lambda_A: Arrival rate for Type A
+        lambda_B: Arrival rate for Type B
+        state_format: 'stage' or 'length'
+
+    Returns:
+        List of merged values with compensation, length = max(l_A, l_B)
+    """
+    max_stage = max(l_A, l_B)
+    min_l = min(l_A, l_B)
+    total_lambda = lambda_A + lambda_B
+    result = []
+
+    if state_format == 'stage':
+        for stage in range(max_stage):
+            if stage not in state:
+                result.append(0.0)
+                continue
+
+            if stage < min_l:
+                # Both types present: simple sum
+                merged = state[stage][0] + state[stage][1]
+            elif l_A < l_B:
+                # Only Type B present (A has completed)
+                merged = state[stage][1] * total_lambda / lambda_B
+            else:
+                # Only Type A present (B has completed)
+                merged = state[stage][0] * total_lambda / lambda_A
+            result.append(merged)
+
+    elif state_format == 'length':
+        for stage in range(max_stage):
+            length = l0 + stage
+            if length not in state:
+                result.append(0.0)
+                continue
+
+            if stage < min_l:
+                # Both types present
+                merged = state[length][0] + state[length][1]
+            elif l_A < l_B:
+                # Only Type B present
+                merged = state[length][1] * total_lambda / lambda_B
+            else:
+                # Only Type A present
+                merged = state[length][0] * total_lambda / lambda_A
+            result.append(merged)
+
+    return result
+
+
 def compute_characteristic_roots(l0: int, l_A: int, l_B: int,
                                   lambda_A: float, lambda_B: float) -> np.ndarray:
     """
@@ -357,6 +422,346 @@ def compute_limit_roots(l_A: int, l_B: int,
     coeffs[l_B] = q             # λ^0 (constant term)
 
     return np.roots(coeffs)
+
+
+# ============================================================================
+# 4.1 Lyapunov Energy Functions
+# ============================================================================
+
+def compute_transition_matrix(l0: int, l_A: int, l_B: int,
+                               lambda_A: float, lambda_B: float) -> np.ndarray:
+    """
+    Compute the state transition matrix A for the Theory system.
+
+    The merged state vector M evolves as: M(t+1) = A * M(t) + b
+    where b depends on the equilibrium admission.
+
+    For the deviation from equilibrium: δ(t+1) = A * δ(t)
+
+    Args:
+        l0: Initial/prefill length
+        l_A: Decode length for Type A
+        l_B: Decode length for Type B (l_A < l_B)
+        lambda_A: Arrival rate for Type A
+        lambda_B: Arrival rate for Type B
+
+    Returns:
+        Transition matrix A of shape (l_B, l_B)
+    """
+    n = l_B  # Dimension of merged state vector
+    p = lambda_A / (lambda_A + lambda_B)
+    q = 1 - p
+
+    A = np.zeros((n, n))
+
+    # Row 0: admission equation
+    # a(t) = (completion_tokens - increment_tokens) / W_0
+    # M_0(t+1) = a(t) depends on M(t)
+    W_0 = l0 + 1
+
+    for s in range(n):
+        if s < l_A:
+            # Both types at stage s, weight = l0 + s + 1
+            W_s = l0 + s + 1
+        else:
+            # Only Type B at stage s, effective weight for merged = (l0+s+1)*q
+            W_s = (l0 + s + 1) * q
+
+        if s == n - 1:
+            # Completion stage: releases (l0 + l_B) tokens per request
+            # For merged state: completion releases W_{l_B-1} * (l0+l_B) / W_{l_B-1} = (l0+l_B)
+            # But we need to account for the shift...
+            # Actually for completion: tokens released = (l0 + l_B) per request
+            completion_coeff = (l0 + l_B) * q if l_A < l_B else (l0 + l_B)
+            A[0, s] = completion_coeff / W_0
+        else:
+            # Non-completion stage: each request gains 1 token
+            # Contribution to admission = -1 / W_0 per request
+            A[0, s] = -W_s / W_0  # Normalized by effective weight
+
+    # Rows 1 to n-1: shift (advance) operation
+    # M_s(t+1) = M_{s-1}(t) for s = 1, ..., n-1
+    for s in range(1, n):
+        A[s, s-1] = 1.0
+
+    return A
+
+
+def compute_weight_vector(l0: int, l_A: int, l_B: int,
+                          lambda_A: float, lambda_B: float) -> np.ndarray:
+    """
+    Compute the weight vector W for token balance.
+
+    Token Balance: sum_s W_s * M_s = B
+
+    Args:
+        l0, l_A, l_B, lambda_A, lambda_B: System parameters
+
+    Returns:
+        Weight vector W of length l_B
+    """
+    n = l_B
+    q = lambda_B / (lambda_A + lambda_B)
+
+    W = np.zeros(n)
+    for s in range(n):
+        if s < l_A:
+            W[s] = l0 + s + 1
+        else:
+            W[s] = (l0 + s + 1) * q
+
+    return W
+
+
+def compute_equilibrium_state(l0: int, l_A: int, l_B: int, B: float,
+                               lambda_A: float, lambda_B: float) -> np.ndarray:
+    """
+    Compute the equilibrium merged state vector M*.
+
+    At equilibrium, all stages have the same merged value N:
+    M* = [N, N, ..., N]
+    where N = B / sum(W_s)
+
+    Args:
+        l0, l_A, l_B, B, lambda_A, lambda_B: System parameters
+
+    Returns:
+        Equilibrium state vector M* of length l_B
+    """
+    W = compute_weight_vector(l0, l_A, l_B, lambda_A, lambda_B)
+    N = B / np.sum(W)
+    return np.full(l_B, N)
+
+
+def compute_lyapunov_matrix(A: np.ndarray, Q: np.ndarray = None) -> np.ndarray:
+    """
+    Solve the discrete Lyapunov equation: A^T P A - P = -Q
+
+    For stable A (all eigenvalues |λ| < 1), there exists unique P > 0.
+
+    Args:
+        A: Transition matrix (must be stable)
+        Q: Positive definite matrix (default: identity)
+
+    Returns:
+        P: Solution to the Lyapunov equation
+    """
+    from scipy import linalg
+
+    n = A.shape[0]
+    if Q is None:
+        Q = np.eye(n)
+
+    # scipy.linalg.solve_discrete_lyapunov solves: A X A^T - X + Q = 0
+    # We need: A^T P A - P = -Q  =>  A^T P A - P + Q = 0
+    # Let X = P, then we need: A^T X A - X + Q = 0
+    # scipy solves: A X A^T - X + Q = 0
+    # So we pass A^T to get: (A^T) X (A^T)^T - X + Q = 0 => A^T X A - X + Q = 0
+
+    P = linalg.solve_discrete_lyapunov(A.T, Q)
+
+    return P
+
+
+def compute_lyapunov_energy(M: np.ndarray, P: np.ndarray, M_star: np.ndarray) -> float:
+    """
+    Compute Lyapunov energy V(M) = (M - M*)^T P (M - M*)
+
+    Args:
+        M: Current merged state vector
+        P: Lyapunov matrix
+        M_star: Equilibrium state vector
+
+    Returns:
+        V: Lyapunov energy (scalar)
+    """
+    delta = M - M_star
+    return float(delta @ P @ delta)
+
+
+def compute_lyapunov_energy_from_state(state: Dict, l0: int, l_A: int, l_B: int,
+                                        lambda_A: float, lambda_B: float, B: float,
+                                        P: np.ndarray, M_star: np.ndarray,
+                                        state_format: str = 'stage') -> float:
+    """
+    Compute Lyapunov energy from a state dictionary.
+
+    Convenience function that converts state dict to merged vector,
+    then computes energy.
+
+    Args:
+        state: State dictionary
+        l0, l_A, l_B, lambda_A, lambda_B, B: System parameters
+        P: Lyapunov matrix
+        M_star: Equilibrium state vector
+        state_format: 'stage' or 'length'
+
+    Returns:
+        V: Lyapunov energy
+    """
+    M = np.array(compute_merged_compensated_vector(
+        state, l0, l_A, l_B, lambda_A, lambda_B, state_format
+    ))
+    return compute_lyapunov_energy(M, P, M_star)
+
+
+# ============================================================================
+# 4.2 Delta Vector Functions
+# ============================================================================
+
+def compute_delta_vector(M_theory: List[float], M_sim: List[float]) -> List[float]:
+    """
+    Compute Δ = M^T - M^S (Theory minus Simulation).
+
+    Args:
+        M_theory: Theory merged state vector
+        M_sim: Simulation merged state vector
+
+    Returns:
+        Delta vector Δ
+    """
+    return [t - s for t, s in zip(M_theory, M_sim)]
+
+
+def compute_delta_stats(delta: List[float], W: np.ndarray) -> Dict:
+    """
+    Compute statistics about the Delta vector.
+
+    Args:
+        delta: Delta vector Δ = M^T - M^S
+        W: Weight vector
+
+    Returns:
+        Dictionary with:
+        - weighted_sum: sum(W_s * Δ_s) (should be ~0 by Token Balance)
+        - max_delta: max(Δ)
+        - min_delta: min(Δ)
+        - argmax_delta: position of max(Δ)
+        - argmin_delta: position of min(Δ)
+        - num_positive: count of Δ_s > 0
+        - num_negative: count of Δ_s < 0
+    """
+    delta_arr = np.array(delta)
+
+    return {
+        'weighted_sum': float(np.sum(W * delta_arr)),
+        'max_delta': float(np.max(delta_arr)),
+        'min_delta': float(np.min(delta_arr)),
+        'argmax_delta': int(np.argmax(delta_arr)),
+        'argmin_delta': int(np.argmin(delta_arr)),
+        'num_positive': int(np.sum(delta_arr > 1e-9)),
+        'num_negative': int(np.sum(delta_arr < -1e-9)),
+    }
+
+
+# ============================================================================
+# 4.3 Argmax/Argmin Tracking
+# ============================================================================
+
+def compute_argmax_argmin(M: List[float]) -> Tuple[int, int, float, float]:
+    """
+    Compute argmax and argmin positions and values.
+
+    Args:
+        M: Merged state vector
+
+    Returns:
+        (argmax, argmin, max_value, min_value)
+    """
+    M_arr = np.array(M)
+    argmax = int(np.argmax(M_arr))
+    argmin = int(np.argmin(M_arr))
+    return argmax, argmin, float(M_arr[argmax]), float(M_arr[argmin])
+
+
+def check_delta_at_extrema(M_theory: List[float], M_sim: List[float]) -> Dict:
+    """
+    Check Delta values at Simulation's argmax and argmin positions.
+
+    This is the key observation: Δ_{m^S} >= 0 (numerically verified).
+
+    Args:
+        M_theory: Theory merged state vector
+        M_sim: Simulation merged state vector
+
+    Returns:
+        Dictionary with:
+        - m_S: argmax position of Simulation
+        - n_S: argmin position of Simulation
+        - delta_at_m_S: Δ_{m^S} = M^T_{m^S} - M^S_{m^S}
+        - delta_at_n_S: Δ_{n^S} = M^T_{n^S} - M^S_{n^S}
+        - delta_m_geq_0: whether Δ_{m^S} >= 0
+        - delta_m_geq_delta_n: whether Δ_{m^S} >= Δ_{n^S}
+        - case: A/B/C/D classification
+    """
+    m_S, n_S, max_sim, min_sim = compute_argmax_argmin(M_sim)
+
+    delta_at_m_S = M_theory[m_S] - M_sim[m_S]
+    delta_at_n_S = M_theory[n_S] - M_sim[n_S]
+
+    # Case classification from theory.md
+    if delta_at_m_S >= 0 and delta_at_n_S <= 0:
+        case = 'A'  # Obvious case
+    elif delta_at_m_S >= 0 and delta_at_n_S > 0:
+        case = 'B'  # Need Δ_{m^S} >= Δ_{n^S}
+    elif delta_at_m_S < 0 and delta_at_n_S <= 0:
+        case = 'C'  # Need |Δ_{m^S}| <= |Δ_{n^S}|
+    else:  # delta_at_m_S < 0 and delta_at_n_S > 0
+        case = 'D'  # Should not happen
+
+    return {
+        'm_S': m_S,
+        'n_S': n_S,
+        'max_sim': max_sim,
+        'min_sim': min_sim,
+        'max_theory': M_theory[m_S],
+        'min_theory_at_n_S': M_theory[n_S],
+        'delta_at_m_S': delta_at_m_S,
+        'delta_at_n_S': delta_at_n_S,
+        'delta_m_geq_0': delta_at_m_S >= -1e-9,
+        'delta_m_geq_delta_n': delta_at_m_S >= delta_at_n_S - 1e-9,
+        'case': case,
+    }
+
+
+# ============================================================================
+# 4.4 Norm Relation Functions
+# ============================================================================
+
+def compute_G_squared_over_V(G: float, V: float) -> float:
+    """
+    Compute the ratio G^2 / V.
+
+    This measures how G (L_inf spread) relates to V (L_2 energy).
+
+    Args:
+        G: Spread (max - min)
+        V: Lyapunov energy
+
+    Returns:
+        G^2 / V ratio (or 0 if V is too small)
+    """
+    if V < 1e-12:
+        return 0.0
+    return G * G / V
+
+
+def compute_G_based_energy(M: List[float], M_star: np.ndarray) -> float:
+    """
+    Compute G-based energy: U(M) = G(M - M*)^2 = (max(M-M*) - min(M-M*))^2
+
+    This is an alternative Lyapunov-like function based on spread.
+
+    Args:
+        M: Current merged state vector
+        M_star: Equilibrium state vector
+
+    Returns:
+        U: G-based energy
+    """
+    delta = np.array(M) - M_star
+    G = float(np.max(delta) - np.min(delta))
+    return G * G
 
 
 # Test

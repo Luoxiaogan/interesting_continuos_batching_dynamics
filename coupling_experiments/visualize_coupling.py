@@ -417,6 +417,689 @@ def plot_roots_analysis(l0: int, l_A: int, l_B: int,
     plt.close()
 
 
+# ============================================================
+# NEW VISUALIZATION FUNCTIONS FOR DELTA ANALYSIS (4.1-4.4)
+# ============================================================
+
+def plot_delta_extrema(delta_data: List[Dict],
+                       output_path: Optional[Path] = None,
+                       title: str = "Delta at Extrema Tracking"):
+    """
+    Plot Delta values at Simulation's extrema positions.
+
+    Top subplot: Δ_{m^S}(t) and Δ_{n^S}(t) values over time
+    Bottom subplot: m^S(t) and n^S(t) positions over time
+
+    This is the KEY plot for verifying Δ_{m^S} ≥ 0 conjecture.
+
+    Args:
+        delta_data: List of dicts with delta analysis data
+        output_path: Path to save figure (optional)
+        title: Plot title
+    """
+    if not delta_data:
+        print("Warning: Empty delta_data, skipping plot_delta_extrema")
+        return
+
+    batches = [row['batch'] for row in delta_data]
+    delta_at_m_S = [row['delta_at_m_S'] for row in delta_data]
+    delta_at_n_S = [row['delta_at_n_S'] for row in delta_data]
+    m_S = [row['m_S'] for row in delta_data]
+    n_S = [row['n_S'] for row in delta_data]
+
+    fig, axes = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
+
+    # ===== Top subplot: Delta values at extrema =====
+    ax = axes[0]
+
+    # Plot Δ_{m^S} (should be >= 0)
+    ax.plot(batches, delta_at_m_S, 'b-', linewidth=2, label='Δ_{m^S} (at Sim argmax)',
+            marker='o', markersize=3)
+
+    # Plot Δ_{n^S} (should be <= 0)
+    ax.plot(batches, delta_at_n_S, 'r-', linewidth=2, label='Δ_{n^S} (at Sim argmin)',
+            marker='s', markersize=3)
+
+    # Critical reference line: y = 0
+    ax.axhline(y=0, color='black', linestyle='--', linewidth=1.5, label='y = 0')
+
+    # Highlight violations (Δ_{m^S} < 0)
+    violations = [i for i, d in enumerate(delta_at_m_S) if d < 0]
+    if violations:
+        for v in violations:
+            ax.axvspan(batches[v] - 0.5, batches[v] + 0.5, alpha=0.3, color='red')
+        ax.scatter([batches[v] for v in violations],
+                   [delta_at_m_S[v] for v in violations],
+                   c='red', s=100, marker='x', zorder=10, label=f'Violations ({len(violations)})')
+
+    ax.set_ylabel('Delta Value', fontsize=12)
+    ax.set_title('Δ at Simulation Extrema (Key: Δ_{m^S} should be ≥ 0)', fontsize=12)
+    ax.legend(loc='best')
+    ax.grid(True, alpha=0.3)
+
+    # Add statistics text
+    delta_m_geq_0_rate = sum(1 for d in delta_at_m_S if d >= 0) / len(delta_at_m_S) * 100
+    ax.text(0.02, 0.98, f'Δ_{{m^S}} ≥ 0: {delta_m_geq_0_rate:.1f}%',
+            transform=ax.transAxes, fontsize=10, verticalalignment='top',
+            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+    # ===== Bottom subplot: Extrema positions =====
+    ax = axes[1]
+
+    # Plot m^S positions (step plot for discrete values)
+    ax.step(batches, m_S, 'b-', linewidth=2, label='m^S (Sim argmax)', where='mid')
+    ax.scatter(batches, m_S, c='blue', s=15, zorder=5)
+
+    # Plot n^S positions
+    ax.step(batches, n_S, 'r-', linewidth=2, label='n^S (Sim argmin)', where='mid')
+    ax.scatter(batches, n_S, c='red', s=15, zorder=5)
+
+    ax.set_xlabel('Batch Index', fontsize=12)
+    ax.set_ylabel('Stage Position', fontsize=12)
+    ax.set_title('Simulation Extrema Positions (m^S = argmax, n^S = argmin)', fontsize=12)
+    ax.legend(loc='best')
+    ax.grid(True, alpha=0.3)
+
+    # Set integer ticks for stage positions
+    max_stage = max(max(m_S), max(n_S))
+    ax.set_yticks(range(max_stage + 1))
+
+    fig.suptitle(title, fontsize=14)
+    plt.tight_layout()
+
+    if output_path:
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        print(f"Saved delta extrema plot to {output_path}")
+
+    plt.close()
+
+
+def plot_delta_heatmap(delta_data: List[Dict],
+                       output_path: Optional[Path] = None,
+                       title: str = "Delta Vector Heatmap"):
+    """
+    Plot Delta vector as a heatmap (stages × time).
+
+    Colors: Red = positive (Theory > Sim), Blue = negative (Theory < Sim), White = 0
+
+    Args:
+        delta_data: List of dicts with delta analysis data (must include 'delta_vec')
+        output_path: Path to save figure (optional)
+        title: Plot title
+    """
+    if not delta_data:
+        print("Warning: Empty delta_data, skipping plot_delta_heatmap")
+        return
+
+    batches = [row['batch'] for row in delta_data]
+
+    # Parse delta_vec strings to numpy array
+    def parse_delta_vec(s):
+        """Parse '[0.1, -0.2, ...]' string to list of floats."""
+        s = s.strip('[]')
+        return [float(x) for x in s.split(',')]
+
+    delta_matrix = []
+    for row in delta_data:
+        delta_vec = row['delta_vec']
+        if isinstance(delta_vec, str):
+            delta_matrix.append(parse_delta_vec(delta_vec))
+        else:
+            delta_matrix.append(delta_vec)
+
+    delta_matrix = np.array(delta_matrix).T  # Shape: (stages, time_steps)
+    n_stages, n_steps = delta_matrix.shape
+
+    fig, ax = plt.subplots(figsize=(14, 6))
+
+    # Compute symmetric color limits
+    max_abs = np.max(np.abs(delta_matrix))
+    vmin, vmax = -max_abs, max_abs
+
+    # Plot heatmap
+    im = ax.imshow(delta_matrix, aspect='auto', cmap='RdBu_r',
+                   vmin=vmin, vmax=vmax,
+                   extent=[batches[0] - 0.5, batches[-1] + 0.5, n_stages - 0.5, -0.5])
+
+    # Add colorbar
+    cbar = plt.colorbar(im, ax=ax, label='Δ = Theory - Simulation')
+
+    # Mark extrema positions
+    m_S = [row['m_S'] for row in delta_data]
+    n_S = [row['n_S'] for row in delta_data]
+    ax.scatter(batches, m_S, c='lime', s=10, marker='^', label='m^S (argmax)', alpha=0.7)
+    ax.scatter(batches, n_S, c='cyan', s=10, marker='v', label='n^S (argmin)', alpha=0.7)
+
+    ax.set_xlabel('Batch Index', fontsize=12)
+    ax.set_ylabel('Stage', fontsize=12)
+    ax.set_title(title, fontsize=14)
+    ax.set_yticks(range(n_stages))
+    ax.legend(loc='upper right')
+
+    plt.tight_layout()
+
+    if output_path:
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        print(f"Saved delta heatmap to {output_path}")
+
+    plt.close()
+
+
+def plot_lyapunov_energy(lyapunov_data: List[Dict],
+                         output_path: Optional[Path] = None,
+                         title: str = "Lyapunov Energy Analysis"):
+    """
+    Plot Lyapunov energy comparison between Theory and Simulation.
+
+    Top subplot: V^T(t) and V^S(t) on log scale
+    Bottom subplot: Energy ratio V^T(t) / V^S(t)
+
+    Args:
+        lyapunov_data: List of dicts with 'V_theory' and 'V_sim'
+        output_path: Path to save figure (optional)
+        title: Plot title
+    """
+    if not lyapunov_data:
+        print("Warning: Empty lyapunov_data, skipping plot_lyapunov_energy")
+        return
+
+    batches = [row['batch'] for row in lyapunov_data]
+    V_theory = [row.get('V_theory', 0.0) for row in lyapunov_data]
+    V_sim = [row.get('V_sim', 0.0) for row in lyapunov_data]
+
+    # Filter out zero/negative values for log scale
+    valid_indices = [i for i in range(len(V_theory)) if V_theory[i] > 0 and V_sim[i] > 0]
+    if not valid_indices:
+        print("Warning: No valid energy data, skipping plot_lyapunov_energy")
+        return
+
+    batches_valid = [batches[i] for i in valid_indices]
+    V_T_valid = [V_theory[i] for i in valid_indices]
+    V_S_valid = [V_sim[i] for i in valid_indices]
+    ratio = [V_theory[i] / V_sim[i] for i in valid_indices]
+
+    fig, axes = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
+
+    # ===== Top subplot: Energy evolution (log scale) =====
+    ax = axes[0]
+    ax.semilogy(batches_valid, V_T_valid, 'b-', linewidth=2, label='V^T (Theory)',
+                marker='o', markersize=3)
+    ax.semilogy(batches_valid, V_S_valid, 'g-', linewidth=2, label='V^S (Simulation)',
+                marker='s', markersize=3)
+
+    ax.set_ylabel('Energy V (log scale)', fontsize=12)
+    ax.set_title('Lyapunov Energy Evolution', fontsize=12)
+    ax.legend(loc='best')
+    ax.grid(True, alpha=0.3)
+
+    # Add dominance statistic
+    V_dominance = sum(1 for i in valid_indices if V_theory[i] >= V_sim[i]) / len(valid_indices) * 100
+    ax.text(0.02, 0.02, f'V^T ≥ V^S: {V_dominance:.1f}%',
+            transform=ax.transAxes, fontsize=10, verticalalignment='bottom',
+            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+    # ===== Bottom subplot: Energy ratio =====
+    ax = axes[1]
+    ax.plot(batches_valid, ratio, 'purple', linewidth=2, marker='o', markersize=3)
+    ax.axhline(y=1.0, color='gray', linestyle='--', linewidth=1.5, label='Ratio = 1')
+
+    # Highlight where ratio < 1 (violations)
+    violations = [i for i, r in enumerate(ratio) if r < 1]
+    if violations:
+        ax.scatter([batches_valid[i] for i in violations],
+                   [ratio[i] for i in violations],
+                   c='red', s=50, marker='x', zorder=10, label=f'< 1 ({len(violations)})')
+
+    ax.set_xlabel('Batch Index', fontsize=12)
+    ax.set_ylabel('V^T / V^S', fontsize=12)
+    ax.set_title('Energy Ratio (should be ≥ 1 if Theory dominates)', fontsize=12)
+    ax.legend(loc='best')
+    ax.grid(True, alpha=0.3)
+
+    # Show stable ratio
+    if len(ratio) > 10:
+        stable_ratio = np.mean(ratio[-10:])
+        ax.text(0.98, 0.98, f'Final ratio ≈ {stable_ratio:.2f}',
+                transform=ax.transAxes, fontsize=10, verticalalignment='top',
+                horizontalalignment='right',
+                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+    fig.suptitle(title, fontsize=14)
+    plt.tight_layout()
+
+    if output_path:
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        print(f"Saved Lyapunov energy plot to {output_path}")
+
+    plt.close()
+
+
+def plot_case_distribution(delta_data: List[Dict],
+                           output_path: Optional[Path] = None,
+                           title: str = "Case Distribution Analysis"):
+    """
+    Plot Case A/B/C/D distribution.
+
+    Left subplot: Pie chart of overall distribution
+    Right subplot: Cumulative case counts over time
+
+    Case definitions:
+        A: Δ_{m^S} ≥ 0 AND Δ_{n^S} ≤ 0 (ideal)
+        B: Δ_{m^S} ≥ 0 AND Δ_{n^S} > 0
+        C: Δ_{m^S} < 0 AND Δ_{n^S} ≤ 0
+        D: Δ_{m^S} < 0 AND Δ_{n^S} > 0 (worst)
+
+    Args:
+        delta_data: List of dicts with 'case' field
+        output_path: Path to save figure (optional)
+        title: Plot title
+    """
+    if not delta_data:
+        print("Warning: Empty delta_data, skipping plot_case_distribution")
+        return
+
+    batches = [row['batch'] for row in delta_data]
+    cases = [row['case'] for row in delta_data]
+
+    # Count cases
+    case_counts = {'A': 0, 'B': 0, 'C': 0, 'D': 0}
+    for c in cases:
+        case_counts[c] = case_counts.get(c, 0) + 1
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+    # ===== Left subplot: Pie chart =====
+    ax = axes[0]
+    colors = {'A': '#2ecc71', 'B': '#f1c40f', 'C': '#e67e22', 'D': '#e74c3c'}
+    labels = []
+    sizes = []
+    pie_colors = []
+    for case in ['A', 'B', 'C', 'D']:
+        if case_counts[case] > 0:
+            labels.append(f'Case {case}\n({case_counts[case]})')
+            sizes.append(case_counts[case])
+            pie_colors.append(colors[case])
+
+    if sizes:
+        wedges, texts, autotexts = ax.pie(sizes, labels=labels, colors=pie_colors,
+                                           autopct='%1.1f%%', startangle=90,
+                                           textprops={'fontsize': 10})
+        ax.set_title('Case Distribution', fontsize=12)
+    else:
+        ax.text(0.5, 0.5, 'No data', ha='center', va='center')
+
+    # Add legend explaining cases
+    legend_text = ('Case A: Δ_{m^S}≥0, Δ_{n^S}≤0 (ideal)\n'
+                   'Case B: Δ_{m^S}≥0, Δ_{n^S}>0\n'
+                   'Case C: Δ_{m^S}<0, Δ_{n^S}≤0\n'
+                   'Case D: Δ_{m^S}<0, Δ_{n^S}>0 (worst)')
+    ax.text(0.5, -0.15, legend_text, transform=ax.transAxes, fontsize=9,
+            verticalalignment='top', horizontalalignment='center',
+            bbox=dict(boxstyle='round', facecolor='lightgray', alpha=0.3))
+
+    # ===== Right subplot: Cumulative case counts =====
+    ax = axes[1]
+
+    # Compute cumulative counts for each case
+    cumul = {'A': [], 'B': [], 'C': [], 'D': []}
+    running = {'A': 0, 'B': 0, 'C': 0, 'D': 0}
+    for c in cases:
+        running[c] += 1
+        for case in ['A', 'B', 'C', 'D']:
+            cumul[case].append(running[case])
+
+    # Stacked area plot
+    ax.stackplot(batches,
+                 cumul['A'], cumul['B'], cumul['C'], cumul['D'],
+                 labels=['Case A', 'Case B', 'Case C', 'Case D'],
+                 colors=[colors['A'], colors['B'], colors['C'], colors['D']],
+                 alpha=0.8)
+
+    ax.set_xlabel('Batch Index', fontsize=12)
+    ax.set_ylabel('Cumulative Count', fontsize=12)
+    ax.set_title('Cumulative Case Distribution Over Time', fontsize=12)
+    ax.legend(loc='upper left')
+    ax.grid(True, alpha=0.3)
+
+    fig.suptitle(title, fontsize=14)
+    plt.tight_layout()
+
+    if output_path:
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        print(f"Saved case distribution plot to {output_path}")
+
+    plt.close()
+
+
+def plot_G_vs_V_relation(lyapunov_data: List[Dict],
+                         delta_data: List[Dict],
+                         output_path: Optional[Path] = None,
+                         title: str = "G² vs V Relationship"):
+    """
+    Plot G² vs V scatter plot to explore norm equivalence.
+
+    Args:
+        lyapunov_data: List of dicts with 'V_theory', 'V_sim'
+        delta_data: List of dicts with 'theory_G_merge', 'sim_G_merge'
+        output_path: Path to save figure (optional)
+        title: Plot title
+    """
+    if not lyapunov_data or not delta_data:
+        print("Warning: Empty data, skipping plot_G_vs_V_relation")
+        return
+
+    # Extract data (aligned by batch)
+    V_theory = [row.get('V_theory', 0.0) for row in lyapunov_data]
+    V_sim = [row.get('V_sim', 0.0) for row in lyapunov_data]
+    G_theory = [row.get('theory_G_merge', 0.0) for row in delta_data]
+    G_sim = [row.get('sim_G_merge', 0.0) for row in delta_data]
+
+    # Align lengths
+    n = min(len(V_theory), len(G_theory))
+    V_theory = V_theory[:n]
+    V_sim = V_sim[:n]
+    G_theory = G_theory[:n]
+    G_sim = G_sim[:n]
+
+    # Filter positive values
+    valid_T = [(V_theory[i], G_theory[i]**2) for i in range(n) if V_theory[i] > 0]
+    valid_S = [(V_sim[i], G_sim[i]**2) for i in range(n) if V_sim[i] > 0]
+
+    if not valid_T or not valid_S:
+        print("Warning: No valid data points, skipping plot_G_vs_V_relation")
+        return
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    # Plot Theory points
+    V_T, G2_T = zip(*valid_T)
+    ax.scatter(V_T, G2_T, c='blue', s=30, alpha=0.6, label='Theory', marker='o')
+
+    # Plot Simulation points
+    V_S, G2_S = zip(*valid_S)
+    ax.scatter(V_S, G2_S, c='green', s=30, alpha=0.6, label='Simulation', marker='s')
+
+    ax.set_xlabel('V (Lyapunov Energy)', fontsize=12)
+    ax.set_ylabel('G² (Spread squared)', fontsize=12)
+    ax.set_title(title, fontsize=14)
+    ax.legend(loc='best')
+    ax.grid(True, alpha=0.3)
+
+    # Use log scale if range is large
+    if max(V_T + V_S) / min(V_T + V_S) > 100:
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+
+    # Compute and show G²/V ratio statistics
+    ratio_T = [g2 / v for v, g2 in valid_T]
+    ratio_S = [g2 / v for v, g2 in valid_S]
+    ax.text(0.02, 0.98,
+            f'G²/V ratio:\n  Theory: {np.mean(ratio_T):.4f} ± {np.std(ratio_T):.4f}\n'
+            f'  Sim: {np.mean(ratio_S):.4f} ± {np.std(ratio_S):.4f}',
+            transform=ax.transAxes, fontsize=10, verticalalignment='top',
+            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+    plt.tight_layout()
+
+    if output_path:
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        print(f"Saved G vs V relation plot to {output_path}")
+
+    plt.close()
+
+
+def plot_eviction_delta_relation(trajectory: List[Dict],
+                                  delta_data: List[Dict],
+                                  output_path: Optional[Path] = None,
+                                  title: str = "Eviction vs Delta Relation"):
+    """
+    Plot relationship between eviction events and Delta values.
+
+    Top subplot: Δ_{m^S} curve with eviction events marked
+    Bottom subplot: Eviction stage distribution vs m^S position
+
+    Args:
+        trajectory: List of dicts with eviction info
+        delta_data: List of dicts with delta analysis
+        output_path: Path to save figure (optional)
+        title: Plot title
+    """
+    if not trajectory or not delta_data:
+        print("Warning: Empty data, skipping plot_eviction_delta_relation")
+        return
+
+    batches = [row['batch'] for row in delta_data]
+    delta_at_m_S = [row['delta_at_m_S'] for row in delta_data]
+    m_S = [row['m_S'] for row in delta_data]
+
+    # Find eviction events
+    eviction_batches = []
+    eviction_stages = []
+    for row in trajectory:
+        total_evic = row.get('sim_eviction_total', 0.0)
+        if total_evic > 0.01:
+            eviction_batches.append(row['batch'])
+            # Find which stage had eviction
+            for stage in range(10):  # Check up to 10 stages
+                key = f'sim_eviction_stage{stage}'
+                if row.get(key, 0.0) > 0.01:
+                    eviction_stages.append(stage)
+                    break
+            else:
+                eviction_stages.append(-1)  # Unknown
+
+    fig, axes = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
+
+    # ===== Top subplot: Δ_{m^S} with eviction markers =====
+    ax = axes[0]
+    ax.plot(batches, delta_at_m_S, 'b-', linewidth=2, label='Δ_{m^S}',
+            marker='o', markersize=3)
+    ax.axhline(y=0, color='black', linestyle='--', linewidth=1.5)
+
+    # Mark eviction events
+    if eviction_batches:
+        for b in eviction_batches:
+            ax.axvline(x=b, color='red', linestyle=':', alpha=0.5)
+
+        # Get Δ_{m^S} at eviction batches
+        evic_idx = [batches.index(b) if b in batches else -1 for b in eviction_batches]
+        evic_delta = [delta_at_m_S[i] for i in evic_idx if i >= 0]
+        evic_b = [eviction_batches[j] for j, i in enumerate(evic_idx) if i >= 0]
+        if evic_delta:
+            ax.scatter(evic_b, evic_delta, c='red', s=100, marker='v',
+                       zorder=10, label=f'Eviction events ({len(eviction_batches)})')
+
+    ax.set_ylabel('Δ_{m^S}', fontsize=12)
+    ax.set_title('Δ_{m^S} with Eviction Events Marked', fontsize=12)
+    ax.legend(loc='best')
+    ax.grid(True, alpha=0.3)
+
+    # ===== Bottom subplot: Eviction stage vs m^S =====
+    ax = axes[1]
+
+    # Plot m^S as background
+    ax.step(batches, m_S, 'b-', linewidth=1, alpha=0.5, label='m^S (Sim argmax)', where='mid')
+
+    # Plot eviction stages
+    if eviction_batches and eviction_stages:
+        valid_evic = [(b, s) for b, s in zip(eviction_batches, eviction_stages) if s >= 0]
+        if valid_evic:
+            evic_b, evic_s = zip(*valid_evic)
+            ax.scatter(evic_b, evic_s, c='red', s=80, marker='x',
+                       linewidths=2, zorder=10, label='Eviction stage')
+
+            # Check if eviction happened at m^S
+            at_m_S = sum(1 for b, s in valid_evic if b in batches and m_S[batches.index(b)] == s)
+            ax.text(0.02, 0.98, f'Eviction at m^S: {at_m_S}/{len(valid_evic)}',
+                    transform=ax.transAxes, fontsize=10, verticalalignment='top',
+                    bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+    ax.set_xlabel('Batch Index', fontsize=12)
+    ax.set_ylabel('Stage', fontsize=12)
+    ax.set_title('Eviction Stage vs Simulation Argmax Position', fontsize=12)
+    ax.legend(loc='best')
+    ax.grid(True, alpha=0.3)
+
+    fig.suptitle(title, fontsize=14)
+    plt.tight_layout()
+
+    if output_path:
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        print(f"Saved eviction-delta relation plot to {output_path}")
+
+    plt.close()
+
+
+def plot_analysis_dashboard(trajectory: List[Dict],
+                            lyapunov_data: List[Dict],
+                            delta_data: List[Dict],
+                            output_path: Optional[Path] = None,
+                            title: str = "Analysis Dashboard"):
+    """
+    Create a comprehensive 2x3 dashboard of key metrics.
+
+    Layout:
+        (0,0) G^T vs G^S
+        (0,1) V^T vs V^S (if available)
+        (0,2) Δ_{m^S} time series
+        (1,0) Case pie chart
+        (1,1) Energy ratio V^T/V^S (if available)
+        (1,2) G dominance summary
+
+    Args:
+        trajectory: List of dicts with trajectory data
+        lyapunov_data: List of dicts with energy data (can be empty)
+        delta_data: List of dicts with delta analysis
+        output_path: Path to save figure (optional)
+        title: Plot title
+    """
+    if not delta_data:
+        print("Warning: Empty delta_data, skipping plot_analysis_dashboard")
+        return
+
+    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+
+    batches = [row['batch'] for row in delta_data]
+
+    # ===== (0,0) G^T vs G^S =====
+    ax = axes[0, 0]
+    G_theory = [row.get('theory_G_merge', 0.0) for row in delta_data]
+    G_sim = [row.get('sim_G_merge', 0.0) for row in delta_data]
+    ax.plot(batches, G_theory, 'b-', linewidth=2, label='G^T', marker='o', markersize=2)
+    ax.plot(batches, G_sim, 'g-', linewidth=2, label='G^S', marker='s', markersize=2)
+    ax.set_xlabel('Batch')
+    ax.set_ylabel('G (Spread)')
+    ax.set_title('G Comparison')
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # ===== (0,1) V^T vs V^S =====
+    ax = axes[0, 1]
+    if lyapunov_data:
+        V_theory = [row.get('V_theory', 0.0) for row in lyapunov_data]
+        V_sim = [row.get('V_sim', 0.0) for row in lyapunov_data]
+        ly_batches = [row['batch'] for row in lyapunov_data]
+        valid = [(ly_batches[i], V_theory[i], V_sim[i])
+                 for i in range(len(V_theory)) if V_theory[i] > 0 and V_sim[i] > 0]
+        if valid:
+            b, vt, vs = zip(*valid)
+            ax.semilogy(b, vt, 'b-', linewidth=2, label='V^T', marker='o', markersize=2)
+            ax.semilogy(b, vs, 'g-', linewidth=2, label='V^S', marker='s', markersize=2)
+            ax.set_title('Energy V (log scale)')
+        else:
+            ax.text(0.5, 0.5, 'No energy data', ha='center', va='center')
+            ax.set_title('Energy V')
+    else:
+        ax.text(0.5, 0.5, 'No energy data', ha='center', va='center')
+        ax.set_title('Energy V')
+    ax.set_xlabel('Batch')
+    ax.set_ylabel('V')
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # ===== (0,2) Δ_{m^S} time series =====
+    ax = axes[0, 2]
+    delta_at_m_S = [row['delta_at_m_S'] for row in delta_data]
+    ax.plot(batches, delta_at_m_S, 'b-', linewidth=2, marker='o', markersize=2)
+    ax.axhline(y=0, color='black', linestyle='--', linewidth=1.5)
+    ax.set_xlabel('Batch')
+    ax.set_ylabel('Δ_{m^S}')
+    ax.set_title('Δ at Sim argmax (should be ≥ 0)')
+    ax.grid(True, alpha=0.3)
+    # Mark violations
+    violations = [i for i, d in enumerate(delta_at_m_S) if d < 0]
+    if violations:
+        ax.scatter([batches[i] for i in violations],
+                   [delta_at_m_S[i] for i in violations],
+                   c='red', s=50, marker='x', zorder=10)
+
+    # ===== (1,0) Case pie chart =====
+    ax = axes[1, 0]
+    cases = [row['case'] for row in delta_data]
+    case_counts = {'A': 0, 'B': 0, 'C': 0, 'D': 0}
+    for c in cases:
+        case_counts[c] = case_counts.get(c, 0) + 1
+    colors = {'A': '#2ecc71', 'B': '#f1c40f', 'C': '#e67e22', 'D': '#e74c3c'}
+    labels = [f'{k}: {v}' for k, v in case_counts.items() if v > 0]
+    sizes = [v for v in case_counts.values() if v > 0]
+    pie_colors = [colors[k] for k, v in case_counts.items() if v > 0]
+    if sizes:
+        ax.pie(sizes, labels=labels, colors=pie_colors, autopct='%1.1f%%', startangle=90)
+    ax.set_title('Case Distribution')
+
+    # ===== (1,1) Energy ratio =====
+    ax = axes[1, 1]
+    if lyapunov_data:
+        V_theory = [row.get('V_theory', 0.0) for row in lyapunov_data]
+        V_sim = [row.get('V_sim', 0.0) for row in lyapunov_data]
+        ly_batches = [row['batch'] for row in lyapunov_data]
+        ratio = [(ly_batches[i], V_theory[i] / V_sim[i])
+                 for i in range(len(V_theory)) if V_sim[i] > 0]
+        if ratio:
+            b, r = zip(*ratio)
+            ax.plot(b, r, 'purple', linewidth=2, marker='o', markersize=2)
+            ax.axhline(y=1.0, color='gray', linestyle='--')
+            ax.set_title('Energy Ratio V^T/V^S')
+        else:
+            ax.text(0.5, 0.5, 'No ratio data', ha='center', va='center')
+            ax.set_title('Energy Ratio')
+    else:
+        ax.text(0.5, 0.5, 'No energy data', ha='center', va='center')
+        ax.set_title('Energy Ratio')
+    ax.set_xlabel('Batch')
+    ax.set_ylabel('V^T / V^S')
+    ax.grid(True, alpha=0.3)
+
+    # ===== (1,2) G dominance summary =====
+    ax = axes[1, 2]
+    G_dominance = [row.get('G_theory_geq_G_sim', True) for row in delta_data]
+    dom_rate = sum(G_dominance) / len(G_dominance) * 100
+    delta_m_geq_0 = sum(1 for row in delta_data if row['delta_at_m_S'] >= 0) / len(delta_data) * 100
+
+    summary_text = (
+        f"G Dominance Analysis\n"
+        f"{'='*30}\n\n"
+        f"G^T ≥ G^S: {sum(G_dominance)}/{len(G_dominance)} ({dom_rate:.1f}%)\n\n"
+        f"Δ_{{m^S}} ≥ 0: {sum(1 for row in delta_data if row['delta_at_m_S'] >= 0)}/{len(delta_data)} ({delta_m_geq_0:.1f}%)\n\n"
+        f"Case A rate: {case_counts['A']}/{len(cases)} ({case_counts['A']/len(cases)*100:.1f}%)"
+    )
+    ax.text(0.5, 0.5, summary_text, transform=ax.transAxes,
+            fontsize=14, verticalalignment='center', horizontalalignment='center',
+            family='monospace',
+            bbox=dict(boxstyle='round', facecolor='lightgray', alpha=0.5))
+    ax.axis('off')
+    ax.set_title('Summary Statistics')
+
+    fig.suptitle(title, fontsize=16)
+    plt.tight_layout()
+
+    if output_path:
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        print(f"Saved analysis dashboard to {output_path}")
+
+    plt.close()
+
+
 # Quick test
 if __name__ == "__main__":
     # Test with dummy data
