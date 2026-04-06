@@ -10,15 +10,11 @@ when Theory has negative admission while Simulation has eviction, but both
 eventually converge to the same fluid equilibrium (for coprime l_A, l_B).
 """
 
-import sys
 import os
 import json
 import csv
 from datetime import datetime
 from pathlib import Path
-
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'new_project_for_multi_type'))
 
 import numpy as np
 
